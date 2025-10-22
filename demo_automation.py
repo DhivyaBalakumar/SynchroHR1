@@ -15,7 +15,7 @@ class SynchroHRDemo:
         options.add_argument("--disable-blink-features=AutomationControlled")
         self.driver = webdriver.Chrome(options=options)
         self.wait = WebDriverWait(self.driver, 10)
-        self.base_url = "https://synchro-hr-fwc-git-main-dhivyas-projects-e2b392aa.vercel.app"
+        self.base_url = "https://synchro-hr-fwc.vercel.app"
 
     def pause(self, msg, sec=1.0):
         print(f"⏸️  {msg}")
