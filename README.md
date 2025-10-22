@@ -69,8 +69,8 @@ RESEND_API_KEY=<your-resend-key>
 ---
 
 ## 🧩 Setup & Run Locally
-git clone https://github.com/DhivyaBalakumar/SynchroHR.git
-cd SynchroHR
+git clone https://github.com/DhivyaBalakumar/SynchroHR1.git
+cd SynchroHR1
 npm install
 npm run dev
 
