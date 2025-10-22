@@ -169,8 +169,7 @@ cd SynchroHR1
 npm install
 npm run dev
 
-Visit [http://localhost:5173/](http://localhost:5173/).
-
+Visit (http://localhost:8080/)
 ---
 
 ## 🏁 Deployment
