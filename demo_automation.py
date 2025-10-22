@@ -21,116 +21,150 @@ class SynchroHRDemo:
         print(f"⏸️  {msg}")
         time.sleep(sec)
     
+    def check_404(self):
+        """Check if current page is 404"""
+        try:
+            page_text = self.driver.page_source.lower()
+            return "404" in page_text or "page not found" in page_text or "oops" in page_text
+        except:
+            return False
+    
+    def safe_navigate(self, url, description=""):
+        """Navigate with 404 detection"""
+        try:
+            self.driver.get(url)
+            time.sleep(1.5)
+            if self.check_404():
+                print(f"⚠️  Skipping {description} (404)")
+                return False
+            return True
+        except:
+            print(f"⚠️  Navigation failed for {description}")
+            return False
+    
     def smooth_scroll(self, pixels=800):
         """Smooth scroll with natural speed"""
-        self.driver.execute_script(f"window.scrollBy({{top: {pixels}, behavior: 'smooth'}});")
-        time.sleep(0.6)
+        try:
+            self.driver.execute_script(f"window.scrollBy({{top: {pixels}, behavior: 'smooth'}});")
+            time.sleep(0.6)
+        except:
+            pass
 
     def sign_up_or_sign_in(self, role, name, email, password):
         """Handle sign up or sign in for a user role"""
-        self.driver.get(f"{self.base_url}/auth?mode=signup&role={role}")
-
         try:
-            name_field = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[id='fullName']")))
-            name_field.clear()
-            name_field.send_keys(name)
-        except:
-            pass
-        
-        email_field = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='email']")))
-        email_field.clear()
-        email_field.send_keys(email)
-        
-        password_field = self.driver.find_element(By.CSS_SELECTOR, "input[type='password']")
-        password_field.clear()
-        password_field.send_keys(password)
+            self.driver.get(f"{self.base_url}/auth?mode=signup&role={role}")
+            time.sleep(2)
 
-        submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-        submit_btn.click()
-        time.sleep(2.5)
-
-        if "already registered" in self.driver.page_source.lower():
-            # Switch to login
-            self.driver.get(f"{self.base_url}/auth?mode=login")
-            email_field = self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='email']")))
+            try:
+                name_field = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='fullName']")))
+                name_field.clear()
+                name_field.send_keys(name)
+            except:
+                pass
+            
+            email_field = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='email']")))
             email_field.clear()
             email_field.send_keys(email)
-            password_field = self.driver.find_element(By.CSS_SELECTOR, "input[type='password']")
+            
+            password_field = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='password']")))
             password_field.clear()
             password_field.send_keys(password)
+
             submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
             submit_btn.click()
-            self.wait.until(EC.url_contains('/dashboard'))
-            time.sleep(2)
+            time.sleep(2.5)
+
+            if "already registered" in self.driver.page_source.lower():
+                # Switch to login
+                self.driver.get(f"{self.base_url}/auth?mode=login")
+                time.sleep(2)
+                email_field = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='email']")))
+                email_field.clear()
+                email_field.send_keys(email)
+                password_field = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='password']")))
+                password_field.clear()
+                password_field.send_keys(password)
+                submit_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
+                submit_btn.click()
+                time.sleep(3)
+        except Exception as e:
+            print(f"⚠️  Authentication issue, continuing...")
 
     def explore_dashboard(self, role):
         """Explore personalized dashboard for each role"""
-        self.driver.get(f"{self.base_url}/dashboard/{role}")
-        self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        self.pause(f"📊 {role.upper()} Dashboard", 1.5)
-        
-        # Scroll through dashboard widgets
-        for i in range(3):
-            self.smooth_scroll(600)
-        
-        self.driver.execute_script("window.scrollTo({top: 0, behavior: 'smooth'});")
-        self.pause("Dashboard Overview", 1)
+        try:
+            if not self.safe_navigate(f"{self.base_url}/dashboard/{role}", f"{role} Dashboard"):
+                return
+            self.pause(f"📊 {role.upper()} Dashboard", 1.5)
+            
+            # Scroll through dashboard widgets
+            for i in range(3):
+                self.smooth_scroll(600)
+            
+            try:
+                self.driver.execute_script("window.scrollTo({top: 0, behavior: 'smooth'});")
+            except:
+                pass
+            self.pause("Dashboard Overview", 1)
+        except:
+            print(f"⚠️  Dashboard unavailable, continuing...")
 
     def explore_hr_features(self):
         """Explore HR-specific features: recruitment, screening, analytics"""
         print("\n🎯 Exploring HR Features...")
         
         # Resume Screening - AI-powered
-        self.driver.get(f"{self.base_url}/recruitment/screening")
-        self.pause("📄 AI Resume Screening", 1.5)
-        self.smooth_scroll(800)
-        self.smooth_scroll(800)
+        if self.safe_navigate(f"{self.base_url}/recruitment/screening", "AI Resume Screening"):
+            self.pause("📄 AI Resume Screening", 1.5)
+            self.smooth_scroll(800)
+            self.smooth_scroll(800)
         
         # Enhanced Screening with AI evaluation
-        self.driver.get(f"{self.base_url}/recruitment/enhanced-screening")
-        self.pause("🤖 AI-Powered Candidate Evaluation", 1.5)
-        self.smooth_scroll(800)
+        if self.safe_navigate(f"{self.base_url}/recruitment/enhanced-screening", "Enhanced Screening"):
+            self.pause("🤖 AI-Powered Candidate Evaluation", 1.5)
+            self.smooth_scroll(800)
         
         # Interview Management - Voice & Conversation AI
-        self.driver.get(f"{self.base_url}/recruitment/interviews")
-        self.pause("🎙️ AI Interview Management", 1.5)
-        self.smooth_scroll(800)
-        self.smooth_scroll(800)
+        if self.safe_navigate(f"{self.base_url}/recruitment/interviews", "Interview Management"):
+            self.pause("🎙️ AI Interview Management", 1.5)
+            self.smooth_scroll(800)
+            self.smooth_scroll(800)
         
         # Pipeline View
-        self.driver.get(f"{self.base_url}/recruitment/pipeline")
-        self.pause("📊 Recruitment Pipeline", 1.5)
-        self.smooth_scroll(600)
+        if self.safe_navigate(f"{self.base_url}/recruitment/pipeline", "Recruitment Pipeline"):
+            self.pause("📊 Recruitment Pipeline", 1.5)
+            self.smooth_scroll(600)
         
         # Employee Management
-        self.driver.get(f"{self.base_url}/employees/list")
-        self.pause("👥 Employee Data Management", 1.5)
-        self.smooth_scroll(800)
+        if self.safe_navigate(f"{self.base_url}/employees/list", "Employee Management"):
+            self.pause("👥 Employee Data Management", 1.5)
+            self.smooth_scroll(800)
         
         # Onboarding Management
-        self.driver.get(f"{self.base_url}/employees/onboarding")
-        self.pause("🚀 Onboarding Workflows", 1.5)
-        self.smooth_scroll(600)
+        if self.safe_navigate(f"{self.base_url}/employees/onboarding", "Onboarding Management"):
+            self.pause("🚀 Onboarding Workflows", 1.5)
+            self.smooth_scroll(600)
         
         # Analytics Dashboard
-        self.driver.get(f"{self.base_url}/analytics/advanced")
-        self.pause("📈 HR Analytics & Insights", 2)
-        self.smooth_scroll(800)
-        self.smooth_scroll(800)
+        if self.safe_navigate(f"{self.base_url}/analytics/advanced", "Analytics Dashboard"):
+            self.pause("📈 HR Analytics & Insights", 2)
+            self.smooth_scroll(800)
+            self.smooth_scroll(800)
 
     def explore_manager_features(self):
         """Explore Manager features: team, performance, projects"""
         print("\n👔 Exploring Manager Features...")
         
         # Performance Wall
-        self.driver.get(f"{self.base_url}/manager/performance-wall")
-        self.pause("⭐ Team Performance Tracking", 1.5)
-        self.smooth_scroll(800)
+        if self.safe_navigate(f"{self.base_url}/manager/performance-wall", "Performance Wall"):
+            self.pause("⭐ Team Performance Tracking", 1.5)
+            self.smooth_scroll(800)
         
         # Pulse Surveys
-        self.driver.get(f"{self.base_url}/manager/pulse-surveys")
-        self.pause("📊 Employee Pulse Surveys", 1.5)
-        self.smooth_scroll(600)
+        if self.safe_navigate(f"{self.base_url}/manager/pulse-surveys", "Pulse Surveys"):
+            self.pause("📊 Employee Pulse Surveys", 1.5)
+            self.smooth_scroll(600)
 
     def explore_employee_features(self):
         """Explore Employee self-service features"""
@@ -143,32 +177,34 @@ class SynchroHRDemo:
         print("\n🤖 Exploring AI-Powered Features...")
         
         # AI Interview Demo
-        self.driver.get(f"{self.base_url}/demo/ai-interview")
-        self.pause("🎙️ AI Voice Interview System", 2)
-        self.smooth_scroll(800)
+        if self.safe_navigate(f"{self.base_url}/demo/ai-interview", "AI Interview Demo"):
+            self.pause("🎙️ AI Voice Interview System", 2)
+            self.smooth_scroll(800)
         
         # Career Coach AI
-        self.driver.get(f"{self.base_url}/career/coach")
-        self.pause("💬 AI Career Coach", 1.5)
-        self.smooth_scroll(600)
+        if self.safe_navigate(f"{self.base_url}/career/coach", "Career Coach"):
+            self.pause("💬 AI Career Coach", 1.5)
+            self.smooth_scroll(600)
 
     def explore_public_features(self):
         """Explore public job portal"""
         print("\n🌐 Exploring Public Job Portal...")
         
-        self.driver.get(f"{self.base_url}/jobs")
-        self.pause("📢 Job Listings Portal", 1.5)
-        self.smooth_scroll(800)
-        self.smooth_scroll(800)
-        
-        # Job Application
-        try:
-            first_job = self.driver.find_element(By.CSS_SELECTOR, "a[href*='/jobs/']")
-            first_job.click()
-            self.pause("📝 Job Application Form", 1.5)
-            self.smooth_scroll(600)
-        except:
-            pass
+        if self.safe_navigate(f"{self.base_url}/jobs", "Job Listings"):
+            self.pause("📢 Job Listings Portal", 1.5)
+            self.smooth_scroll(800)
+            self.smooth_scroll(800)
+            
+            # Job Application
+            try:
+                first_job = self.driver.find_element(By.CSS_SELECTOR, "a[href*='/jobs/']")
+                first_job.click()
+                time.sleep(1.5)
+                if not self.check_404():
+                    self.pause("📝 Job Application Form", 1.5)
+                    self.smooth_scroll(600)
+            except:
+                pass
 
     def demo(self):
         """Comprehensive demo showcasing all HRMS features"""
