@@ -1543,6 +1543,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      seed_sample_onboarding: { Args: never; Returns: undefined }
       validate_interview_token: {
         Args: { _token: string }
         Returns: {
