@@ -81,7 +81,7 @@ Visit [[**http://localhost:5173/**](http://localhost:5173/)](http://localhost:51
 ## 🏁 Deployment
 
 Deployed with **Vercel**  
-Custom domain: [synchro-hr-fwc.vercel.app](synchro-hr-fwc.vercel.app)
+Custom domain: synchro-hr-fwc.vercel.app 
 
 Steps:
 1. Set environment variables in Vercel.
