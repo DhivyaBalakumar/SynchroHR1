@@ -27,6 +27,7 @@ import EmployeeList from "./pages/employees/EmployeeList";
 import AddEmployee from "./pages/employees/AddEmployee";
 import DepartmentManagement from "./pages/employees/DepartmentManagement";
 import OnboardingManagement from "./pages/employees/OnboardingManagement";
+import OnboardingEditor from "./pages/employees/OnboardingEditor";
 import CandidateLogin from "./pages/interview/CandidateLogin";
 import InterviewPortal from "./pages/interview/InterviewPortal";
 import InterviewManagement from "./pages/recruitment/InterviewManagement";
@@ -236,6 +237,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRole={['hr', 'admin']}>
                     <OnboardingManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/employees/onboarding/:workflowId/edit"
+                element={
+                  <ProtectedRoute requiredRole={['hr', 'admin']}>
+                    <OnboardingEditor />
                   </ProtectedRoute>
                 }
               />

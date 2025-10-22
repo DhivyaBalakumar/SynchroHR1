@@ -227,12 +227,21 @@ const OnboardingManagement = () => {
                           )}
                         </div>
 
-                        {/* Timestamps */}
-                        <div className="mt-4 pt-4 border-t flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Started: {workflow.started_at ? new Date(workflow.started_at).toLocaleDateString() : 'Not started'}</span>
-                          {workflow.completed_at && (
-                            <span>Completed: {new Date(workflow.completed_at).toLocaleDateString()}</span>
-                          )}
+                        {/* Timestamps and Actions */}
+                        <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                          <div className="text-xs text-muted-foreground">
+                            <span>Started: {workflow.started_at ? new Date(workflow.started_at).toLocaleDateString() : 'Not started'}</span>
+                            {workflow.completed_at && (
+                              <span className="ml-4">Completed: {new Date(workflow.completed_at).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/employees/onboarding/${workflow.id}/edit`)}
+                          >
+                            Edit Tasks
+                          </Button>
                         </div>
                       </Card>
                     </motion.div>
