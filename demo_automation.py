@@ -120,11 +120,6 @@ class SynchroHRDemo:
             self.smooth_scroll(800)
             self.smooth_scroll(800)
         
-        # Enhanced Screening with AI evaluation
-        if self.safe_navigate(f"{self.base_url}/recruitment/enhanced-screening", "Enhanced Screening"):
-            self.pause("🤖 AI-Powered Candidate Evaluation", 1.5)
-            self.smooth_scroll(800)
-        
         # Interview Management - Voice & Conversation AI
         if self.safe_navigate(f"{self.base_url}/recruitment/interviews", "Interview Management"):
             self.pause("🎙️ AI Interview Management", 1.5)
@@ -135,11 +130,6 @@ class SynchroHRDemo:
         if self.safe_navigate(f"{self.base_url}/recruitment/pipeline", "Recruitment Pipeline"):
             self.pause("📊 Recruitment Pipeline", 1.5)
             self.smooth_scroll(600)
-        
-        # Employee Management
-        if self.safe_navigate(f"{self.base_url}/employees/list", "Employee Management"):
-            self.pause("👥 Employee Data Management", 1.5)
-            self.smooth_scroll(800)
         
         # Onboarding Management
         if self.safe_navigate(f"{self.base_url}/employees/onboarding", "Onboarding Management"):
