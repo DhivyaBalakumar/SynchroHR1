@@ -46,6 +46,90 @@ serve(async (req) => {
       throw new Error('Resume not found');
     }
 
+    // Handle demo data differently - skip AI and use existing scores
+    if (resume.source === 'demo') {
+      console.log('Processing demo data - skipping AI analysis');
+      
+      // Use existing AI score from seed data or generate random one
+      const existingScore = resume.ai_score || Math.floor(Math.random() * 40) + 60; // 60-100
+      
+      // Calculate component scores based on overall score
+      const variance = Math.random() * 10 - 5; // ±5 variance
+      const skillsMatch = Math.min(100, Math.max(0, existingScore + variance));
+      const experienceMatch = Math.min(100, Math.max(0, existingScore + (Math.random() * 10 - 5)));
+      const educationMatch = Math.min(100, Math.max(0, existingScore + (Math.random() * 10 - 5)));
+      
+      // Calculate ATS score
+      const atsScore = Math.round(
+        (skillsMatch * 0.4) + 
+        (experienceMatch * 0.35) + 
+        (educationMatch * 0.25)
+      );
+      
+      // Determine status based on ATS score
+      const finalStatus = atsScore >= 75 ? 'selected' : 'rejected';
+      
+      const demoAnalysis = {
+        ai_score: existingScore,
+        recommendation: atsScore >= 85 ? 'Highly Recommended' : 
+                       atsScore >= 75 ? 'Recommended' : 
+                       atsScore >= 60 ? 'Consider' : 'Not Recommended',
+        skills_match: Math.round(skillsMatch),
+        experience_match: Math.round(experienceMatch),
+        education_match: Math.round(educationMatch),
+        ats_score: atsScore,
+        key_strengths: ['Demo candidate profile', 'Sample data for demonstration'],
+        areas_of_concern: ['Demo data - for testing purposes only'],
+        skill_gaps: [],
+        detailed_analysis: `Demo candidate with analytics score of ${existingScore}. Automatically categorized for demonstration.`
+      };
+      
+      // Update resume with demo analysis
+      await supabaseClient
+        .from('resumes')
+        .update({
+          ai_score: existingScore,
+          ai_analysis: demoAnalysis,
+          screening_status: finalStatus,
+          pipeline_stage: finalStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', resume_id);
+      
+      // Log audit trail
+      await supabaseClient
+        .from('pipeline_audit_logs')
+        .insert({
+          resume_id: resume_id,
+          action: `demo_screening_${finalStatus}`,
+          details: {
+            ai_score: existingScore,
+            ats_score: atsScore,
+            recommendation: demoAnalysis.recommendation,
+            auto_decision: true,
+            demo_mode: true
+          }
+        });
+      
+      console.log(`Demo resume categorized: ${finalStatus} (ATS: ${atsScore})`);
+      
+      // Don't send emails for demo data
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          analysis: demoAnalysis,
+          status: finalStatus,
+          email_sent: false,
+          demo_mode: true
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('Processing real applicant - running AI analysis...');
+
     // Get job role requirements
     let jobRequirements = '';
     if (resume.job_roles) {

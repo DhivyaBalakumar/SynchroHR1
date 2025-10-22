@@ -99,17 +99,6 @@ export const ResumeScreening = () => {
     try {
       const resume = resumes.find(r => r.id === resumeId);
 
-      // Skip AI screening for demo data
-      if (resume?.source === 'demo') {
-        toast({
-          title: 'Demo Data',
-          description: 'Cannot process demo applicants. Only real applicants are screened.',
-          variant: 'destructive',
-        });
-        setProcessing(null);
-        return;
-      }
-
       const { data, error } = await supabase.functions.invoke('ai-resume-screening', {
         body: {
           resume_id: resumeId,
@@ -119,9 +108,10 @@ export const ResumeScreening = () => {
 
       if (error) throw error;
 
+      const emailStatus = data.demo_mode ? 'Demo data processed' : 'Email sent automatically';
       toast({
         title: data.status === 'selected' ? 'Candidate Selected!' : 'Candidate Rejected',
-        description: `AI Score: ${data.analysis.ai_score} | ATS: ${data.analysis.ats_score} | Email sent automatically`,
+        description: `AI Score: ${data.analysis.ai_score} | ATS: ${data.analysis.ats_score} | ${emailStatus}`,
       });
 
       loadData();
@@ -138,13 +128,13 @@ export const ResumeScreening = () => {
 
   const runBulkAIScreening = async () => {
     const pendingResumes = resumes.filter(r => 
-      r.screening_status === 'pending' && r.source === 'real'
+      r.screening_status === 'pending'
     );
 
     if (pendingResumes.length === 0) {
       toast({
         title: 'No Pending Resumes',
-        description: 'There are no real pending resumes to screen. Demo data is handled separately.',
+        description: 'There are no pending resumes to screen.',
         variant: 'destructive',
       });
       return;
@@ -156,9 +146,12 @@ export const ResumeScreening = () => {
     let rejected = 0;
     let failed = 0;
 
+    const realCount = pendingResumes.filter(r => r.source === 'real').length;
+    const demoCount = pendingResumes.filter(r => r.source === 'demo').length;
+    
     toast({
       title: 'AI Bulk Screening Started',
-      description: `Processing ${pendingResumes.length} real applicants with ATS scoring...`,
+      description: `Processing ${pendingResumes.length} applicants (${realCount} real, ${demoCount} demo) with ATS scoring...`,
     });
 
     for (const resume of pendingResumes) {
@@ -201,16 +194,6 @@ export const ResumeScreening = () => {
     const resume = resumes.find(r => r.id === resumeId);
     if (!resume) return;
 
-    // Skip email sending for demo data
-    if (resume.source === 'demo') {
-      toast({
-        title: 'Demo Data',
-        description: 'Cannot process demo applicants. Only real applicants can be selected/rejected.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
       // Update resume status
       const { error: updateError } = await supabase
@@ -230,21 +213,40 @@ export const ResumeScreening = () => {
         details: { from_stage: 'screening', to_stage: decision === 'selected' ? 'selected' : 'rejected' }
       });
 
-      // If selected, send immediate selection confirmation email
+      // If selected, send selection email for real applicants only
       if (decision === 'selected') {
-        // Send selection email immediately
-        const { error: selectionEmailError } = await supabase.functions.invoke(
-          'send-selection-email',
-          {
-            body: {
-              candidateName: resume.candidate_name,
-              candidateEmail: resume.email,
-              jobTitle: resume.job_roles?.title || resume.position_applied,
-            },
-          }
-        );
+        // Only send emails for real applicants
+        if (resume.source === 'real') {
+          // Send selection email immediately
+          const { error: selectionEmailError } = await supabase.functions.invoke(
+            'send-selection-email',
+            {
+              body: {
+                candidateName: resume.candidate_name,
+                candidateEmail: resume.email,
+                jobTitle: resume.job_roles?.title || resume.position_applied,
+              },
+            }
+          );
 
-        if (selectionEmailError) throw selectionEmailError;
+          if (selectionEmailError) throw selectionEmailError;
+
+          // Then trigger automated interview scheduling with 1 hour delay
+          const { error: scheduleError } = await supabase.functions.invoke(
+            'schedule-automated-interview',
+            {
+              body: {
+                resumeId,
+                candidateName: resume.candidate_name,
+                candidateEmail: resume.email,
+                jobTitle: resume.job_roles?.title || resume.position_applied,
+                delayHours: 1, // 1 hour delay before sending interview invitation
+              },
+            }
+          );
+
+          if (scheduleError) throw scheduleError;
+        }
 
         // Mark selection email as sent
         await supabase
@@ -252,37 +254,25 @@ export const ResumeScreening = () => {
           .update({ selection_email_sent: true })
           .eq('id', resumeId);
 
-        // Then trigger automated interview scheduling with 1 hour delay
-        const { error: scheduleError } = await supabase.functions.invoke(
-          'schedule-automated-interview',
-          {
+        toast({
+          title: 'Candidate Selected',
+          description: resume.source === 'real' 
+            ? 'Selection confirmation email sent. AI interview invitation will be sent in 1 hour.'
+            : 'Demo candidate selected (no emails sent)',
+        });
+      } else {
+        // Send rejection email for real applicants only
+        if (resume.source === 'real') {
+          await supabase.functions.invoke('send-rejection-email', {
             body: {
-              resumeId,
               candidateName: resume.candidate_name,
               candidateEmail: resume.email,
               jobTitle: resume.job_roles?.title || resume.position_applied,
-              delayHours: 1, // 1 hour delay before sending interview invitation
             },
-          }
-        );
+          });
+        }
 
-        if (scheduleError) throw scheduleError;
-
-        toast({
-          title: 'Candidate Selected',
-          description: 'Selection confirmation email sent. AI interview invitation will be sent in 1 hour.',
-        });
-      } else {
-        // Send rejection email immediately
-        await supabase.functions.invoke('send-rejection-email', {
-          body: {
-            candidateName: resume.candidate_name,
-            candidateEmail: resume.email,
-            jobTitle: resume.job_roles?.title || resume.position_applied,
-          },
-        });
-
-        // Mark as sent - using selection_email_sent for now
+        // Mark as sent
         await supabase
           .from('resumes')
           .update({ selection_email_sent: true })
@@ -290,7 +280,7 @@ export const ResumeScreening = () => {
 
         toast({
           title: 'Candidate Rejected',
-          description: 'Rejection email sent',
+          description: resume.source === 'real' ? 'Rejection email sent' : 'Demo candidate rejected (no email sent)',
         });
       }
 
