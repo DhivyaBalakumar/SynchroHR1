@@ -24,6 +24,9 @@ verify_jwt = false
 [functions.get-realtime-token]
 verify_jwt = false
 
+[functions.interview-ai-chat]
+verify_jwt = false
+
 [functions.parse-resume]
 verify_jwt = false
 
