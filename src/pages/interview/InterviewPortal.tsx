@@ -60,6 +60,32 @@ export const InterviewPortal = () => {
     generateInterviewQuestions(storedJob || '');
   }, [navigate, toast]);
 
+  // Cleanup camera on unmount or tab visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && mediaStream) {
+        stopCamera();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      if (mediaStream) {
+        stopCamera();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (mediaStream) {
+        stopCamera();
+      }
+    };
+  }, [mediaStream]);
+
   const generateInterviewQuestions = async (jobTitle: string) => {
     setLoadingQuestions(true);
     try {
