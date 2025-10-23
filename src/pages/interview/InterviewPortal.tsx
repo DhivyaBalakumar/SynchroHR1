@@ -29,8 +29,7 @@ export const InterviewPortal = () => {
   const [step, setStep] = useState<'welcome' | 'setup' | 'interview' | 'complete'>('welcome');
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [micEnabled, setMicEnabled] = useState(false);
-  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [questions, setQuestions] = useState<any[]>([]);
@@ -81,7 +80,7 @@ export const InterviewPortal = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       stopAllStreams();
     };
-  }, [videoStream, audioStream]);
+  }, [mediaStream]);
 
   const generateInterviewQuestions = async (jobTitle: string) => {
     setLoadingQuestions(true);
@@ -135,20 +134,21 @@ export const InterviewPortal = () => {
     }
   };
 
-  const startVideo = async () => {
-    // Don't request again if already enabled
-    if (cameraEnabled && videoStream) {
+  const startBothPermissions = async () => {
+    if (cameraEnabled && micEnabled && mediaStream) {
       return;
     }
 
     try {
+      // Request both camera and microphone in one call
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720 },
-        audio: false
+        audio: true
       });
       
-      setVideoStream(stream);
+      setMediaStream(stream);
       setCameraEnabled(true);
+      setMicEnabled(true);
       
       // Wait for next tick to ensure video element is rendered
       setTimeout(() => {
@@ -161,57 +161,24 @@ export const InterviewPortal = () => {
       }, 100);
 
       toast({
-        title: 'Camera Enabled',
-        description: 'Your camera is now active',
+        title: 'Permissions Granted',
+        description: 'Camera and microphone are now active',
       });
     } catch (error) {
-      console.error('Error accessing camera:', error);
+      console.error('Error accessing media devices:', error);
       toast({
-        title: 'Camera Access Denied',
-        description: 'Please allow camera access to continue',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const startAudio = async () => {
-    // Don't request again if already enabled
-    if (micEnabled && audioStream) {
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: false,
-        audio: true
-      });
-      
-      setAudioStream(stream);
-      setMicEnabled(true);
-
-      toast({
-        title: 'Microphone Enabled',
-        description: 'Your microphone is now active',
-      });
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-      toast({
-        title: 'Microphone Access Denied',
-        description: 'Please allow microphone access to continue',
+        title: 'Access Denied',
+        description: 'Please allow camera and microphone access to continue',
         variant: 'destructive',
       });
     }
   };
 
   const stopAllStreams = () => {
-    if (videoStream) {
-      videoStream.getTracks().forEach(track => track.stop());
-      setVideoStream(null);
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      setMediaStream(null);
       setCameraEnabled(false);
-    }
-    if (audioStream) {
-      audioStream.getTracks().forEach(track => track.stop());
-      setAudioStream(null);
       setMicEnabled(false);
     }
   };
@@ -371,46 +338,33 @@ export const InterviewPortal = () => {
         </div>
 
         <div className="flex flex-col gap-3 items-center">
-          <div className="flex gap-3">
-            <Button 
-              onClick={startVideo} 
-              size="lg"
-              disabled={cameraEnabled}
-              variant={cameraEnabled ? "outline" : "default"}
-            >
-              {cameraEnabled ? (
-                <>
-                  <Video className="mr-2 h-5 w-5" />
-                  Camera Enabled
-                </>
-              ) : (
-                <>
-                  <Video className="mr-2 h-5 w-5" />
-                  Enable Camera
-                </>
-              )}
-            </Button>
-            <Button 
-              onClick={startAudio} 
-              size="lg"
-              disabled={micEnabled}
-              variant={micEnabled ? "outline" : "default"}
-            >
-              {micEnabled ? (
-                <>
-                  <Mic className="mr-2 h-5 w-5" />
-                  Microphone Enabled
-                </>
-              ) : (
-                <>
-                  <Mic className="mr-2 h-5 w-5" />
-                  Enable Microphone
-                </>
-              )}
-            </Button>
-          </div>
+          <Button 
+            onClick={startBothPermissions} 
+            size="lg"
+            disabled={cameraEnabled && micEnabled}
+            className="min-w-[250px]"
+          >
+            {cameraEnabled && micEnabled ? (
+              <>
+                <Video className="mr-2 h-5 w-5" />
+                <Mic className="mr-2 h-5 w-5" />
+                Camera & Mic Enabled
+              </>
+            ) : (
+              <>
+                <Video className="mr-2 h-5 w-5" />
+                <Mic className="mr-2 h-5 w-5" />
+                Enable Camera & Microphone
+              </>
+            )}
+          </Button>
           
-          <Button onClick={handleStartInterview} size="lg" className="w-full max-w-xs">
+          <Button 
+            onClick={handleStartInterview} 
+            size="lg" 
+            className="w-full max-w-xs"
+            disabled={!cameraEnabled || !micEnabled}
+          >
             Start Interview
           </Button>
         </div>
