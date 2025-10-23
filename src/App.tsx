@@ -30,6 +30,7 @@ import OnboardingManagement from "./pages/employees/OnboardingManagement";
 import OnboardingEditor from "./pages/employees/OnboardingEditor";
 import CandidateLogin from "./pages/interview/CandidateLogin";
 import InterviewPortal from "./pages/interview/InterviewPortal";
+import InterviewTokenHandler from "./pages/interview/InterviewTokenHandler";
 import InterviewManagement from "./pages/recruitment/InterviewManagement";
 import PipelineView from "./pages/recruitment/PipelineView";
 import AdvancedAnalytics from "./pages/analytics/AdvancedAnalytics";
@@ -251,6 +252,7 @@ const App = () => (
 
               {/* Interview Routes - Public for candidates with token */}
               <Route path="/interview/login" element={<CandidateLogin />} />
+              <Route path="/interview/:token" element={<InterviewTokenHandler />} />
               <Route path="/interview/portal" element={<InterviewPortal />} />
               
               {/* Demo Route - Public to showcase AI interview platform */}
