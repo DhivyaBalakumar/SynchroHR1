@@ -137,6 +137,11 @@ export const InterviewPortal = () => {
 
   const startVideo = async () => {
     try {
+      // Stop any existing video stream first
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720 },
         audio: false
@@ -147,7 +152,7 @@ export const InterviewPortal = () => {
       
       // Wait for next tick to ensure video element is rendered
       setTimeout(() => {
-        if (videoRef.current && stream) {
+        if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(err => {
             console.error('Error playing video:', err);
@@ -171,6 +176,11 @@ export const InterviewPortal = () => {
 
   const startAudio = async () => {
     try {
+      // Stop any existing audio stream first
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: false,
         audio: true
@@ -400,11 +410,9 @@ export const InterviewPortal = () => {
             </Button>
           </div>
           
-          {cameraEnabled && micEnabled && (
-            <Button onClick={handleStartInterview} size="lg" className="w-full max-w-xs">
-              Start Interview
-            </Button>
-          )}
+          <Button onClick={handleStartInterview} size="lg" className="w-full max-w-xs">
+            Start Interview
+          </Button>
         </div>
       </div>
     </Card>
