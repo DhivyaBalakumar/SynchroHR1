@@ -118,6 +118,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (!resendResponse.ok) {
       console.error("Resend API error response:", resendData);
       console.error("Resend API status:", resendResponse.status);
+      
+      // Special handling for domain verification error
+      if (resendData.message?.includes("verify a domain")) {
+        console.error("DOMAIN VERIFICATION REQUIRED: Please verify your domain at resend.com/domains");
+        throw new Error("Domain verification required. Please verify your domain at resend.com/domains and update the MAIL_FROM environment variable.");
+      }
+      
       throw new Error(resendData.message || `Failed to send email: ${resendResponse.status}`);
     }
 
