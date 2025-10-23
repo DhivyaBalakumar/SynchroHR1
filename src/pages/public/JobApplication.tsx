@@ -134,10 +134,43 @@ const JobApplication = () => {
           phone: formData.phone,
         });
 
+      // Create interview token for immediate interview
+      const token = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days validity
+
+      await supabase
+        .from('interview_tokens')
+        .insert({
+          resume_id: resumeData.id,
+          token: token,
+          expires_at: expiresAt.toISOString(),
+        });
+
+      // Generate interview link
+      const interviewLink = `${window.location.origin}/interview/${token}`;
+      const tokenExpiry = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+      // Send selection email with interview link
+      const { error: emailError } = await supabase.functions.invoke('send-selection-email', {
+        body: {
+          candidateName: formData.fullName,
+          candidateEmail: formData.email,
+          jobTitle: job.title,
+          interviewLink: interviewLink,
+          tokenExpiry: tokenExpiry,
+        }
+      });
+
+      if (emailError) {
+        console.error('Error sending email:', emailError);
+        // Don't fail the submission if email fails
+      }
+
       setSubmitted(true);
       toast({
         title: 'Application submitted!',
-        description: 'We will review your application and get back to you soon.',
+        description: 'Check your email for the AI interview link!',
       });
     } catch (error: any) {
       console.error('Error submitting application:', error);
@@ -170,7 +203,9 @@ const JobApplication = () => {
             <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Application Submitted!</h2>
             <p className="text-muted-foreground mb-6">
-              Thank you for applying to {job.title}. We will review your application and contact you soon.
+              Thank you for applying to {job.title}. 
+              <br /><br />
+              <strong>📧 Check your email</strong> - We've sent you a link to start your AI interview immediately!
             </p>
             <Button onClick={() => navigate('/jobs')}>
               View More Jobs
