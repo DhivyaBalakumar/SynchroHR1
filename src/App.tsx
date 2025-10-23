@@ -39,6 +39,8 @@ import CareerCoachPage from "./pages/career/CareerCoachPage";
 import PerformanceWallPage from "./pages/manager/PerformanceWallPage";
 import PulseSurveysPage from "./pages/manager/PulseSurveysPage";
 
+import DemoInterview from "./pages/interview/DemoInterview";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -255,8 +257,9 @@ const App = () => (
               <Route path="/interview/:token" element={<InterviewTokenHandler />} />
               <Route path="/interview/portal" element={<InterviewPortal />} />
               
-              {/* Demo Route - Public to showcase AI interview platform */}
+              {/* Demo Routes - Public to showcase AI interview platform */}
               <Route path="/demo/ai-interview" element={<AIInterviewDemo />} />
+              <Route path="/interview/demo" element={<DemoInterview />} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
