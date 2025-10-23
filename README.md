@@ -155,9 +155,10 @@ SynchroHR is an **AI‑powered Human Resource Management System** designed for m
 Create a `.env` file in the project root:
 
 VITE_SUPABASE_URL=https://wapydsvgltbhkvbfaybp.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=
-(Use VITE_ prefixes for client‑side variables)
-text
+
+
+VITE_SUPABASE_PUBLISHABLE_KEY=(Use VITE_ prefixes for client‑side variables)
+
 
 ---
 
