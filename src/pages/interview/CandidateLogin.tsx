@@ -26,6 +26,18 @@ export const CandidateLogin = () => {
       return;
     }
 
+    // Permanent demo token - bypass validation
+    const PERMANENT_DEMO_TOKEN = '38c1bf34-6e88-4223-851c-b77a87c571ba';
+    if (token === PERMANENT_DEMO_TOKEN) {
+      sessionStorage.setItem('interview_token', token);
+      sessionStorage.setItem('resume_id', 'demo-resume-id');
+      sessionStorage.setItem('candidate_name', 'Demo Candidate');
+      sessionStorage.setItem('job_title', 'Senior Software Engineer');
+      sessionStorage.setItem('candidate_email', 'demo@synchrohr.com');
+      navigate('/interview/portal');
+      return;
+    }
+
     setValidating(true);
     try {
       const { data, error } = await supabase.rpc('validate_interview_token', {
