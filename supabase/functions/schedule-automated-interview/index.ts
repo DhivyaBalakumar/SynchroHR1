@@ -37,7 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate secure interview token
     const token = crypto.randomUUID();
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 48); // Token valid for 48 hours
+    expiresAt.setDate(expiresAt.getDate() + 30); // Token valid for 30 days
 
     // Create interview token
     const { data: tokenData, error: tokenError } = await supabase
