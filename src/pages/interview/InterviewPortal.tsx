@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { VideoRecorder } from '@/components/interview/VideoRecorder';
+import { VoiceInterviewInterface } from '@/components/VoiceInterviewInterface';
 
 export const InterviewPortal = () => {
   const navigate = useNavigate();
@@ -160,15 +161,18 @@ export const InterviewPortal = () => {
 
     // Create interview session
     try {
+      const candidateEmail = sessionStorage.getItem('candidate_email') || '';
+      
       const { data, error } = await supabase
         .from('interviews')
         .insert({
           candidate_name: candidateName,
-          candidate_email: '',
+          candidate_email: candidateEmail,
           position: jobTitle || 'Unknown',
-          interview_type: 'ai_video',
+          interview_type: 'ai_voice',
           status: 'in_progress',
           scheduled_at: new Date().toISOString(),
+          resume_id: resumeId,
         })
         .select()
         .single();
@@ -179,13 +183,13 @@ export const InterviewPortal = () => {
       setStep('interview');
       toast({
         title: 'Interview Started',
-        description: 'Good luck! Take your time with each question.',
+        description: 'Good luck! Answer naturally - the AI will listen and respond.',
       });
     } catch (error: any) {
       console.error('Error starting interview:', error);
       toast({
         title: 'Error',
-        description: 'Failed to start interview session',
+        description: error.message || 'Failed to start interview session',
         variant: 'destructive',
       });
     }
@@ -325,72 +329,22 @@ export const InterviewPortal = () => {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-bold">Question {currentQuestion + 1} of {questions.length}</h2>
-            <Badge variant="outline" className="mt-2">
-              {Math.round(((currentQuestion + 1) / questions.length) * 100)}% Complete
-            </Badge>
-          </div>
-          <div className="flex gap-2">
-            {micEnabled && <Mic className="h-5 w-5 text-green-500" />}
-            {cameraEnabled && <Video className="h-5 w-5 text-blue-500" />}
+            <h2 className="text-xl font-bold">AI Voice Interview</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Position: {jobTitle}
+            </p>
           </div>
         </div>
-        <Progress value={((currentQuestion + 1) / questions.length) * 100} className="mb-4" />
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="font-semibold mb-4">Your Video</h3>
-          <div className="aspect-video bg-secondary/20 rounded-lg overflow-hidden">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold">Question</h3>
-                <Badge variant="outline">
-                  {questions[currentQuestion]?.category || 'General'}
-                </Badge>
-              </div>
-              <div className="bg-primary/5 p-6 rounded-lg min-h-[150px] flex items-center">
-                <p className="text-lg">
-                  {loadingQuestions ? 'Generating personalized questions...' : questions[currentQuestion]?.question}
-                </p>
-              </div>
-            </div>
-
-            <VideoRecorder
-              onRecordingComplete={(blob, duration) => {
-                const newRecordings = new Map(recordedVideos);
-                newRecordings.set(currentQuestion, blob);
-                setRecordedVideos(newRecordings);
-                toast({
-                  title: 'Response Recorded',
-                  description: `Duration: ${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}`,
-                });
-              }}
-            />
-
-            <div className="flex gap-3">
-              <Button 
-                onClick={handleNextQuestion} 
-                className="flex-1"
-                disabled={loadingQuestions}
-              >
-                {currentQuestion === questions.length - 1 ? 'Complete Interview' : 'Next Question'}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
+      <VoiceInterviewInterface
+        interviewContext={{
+          candidateName: candidateName,
+          jobTitle: jobTitle,
+          resumeData: {}
+        }}
+        onComplete={handleCompleteInterview}
+      />
     </div>
   );
 
