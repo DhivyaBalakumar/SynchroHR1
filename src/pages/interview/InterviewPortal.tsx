@@ -136,12 +136,12 @@ export const InterviewPortal = () => {
   };
 
   const startVideo = async () => {
-    try {
-      // Stop any existing video stream first
-      if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-      }
+    // Don't request again if already enabled
+    if (cameraEnabled && videoStream) {
+      return;
+    }
 
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720 },
         audio: false
@@ -175,12 +175,12 @@ export const InterviewPortal = () => {
   };
 
   const startAudio = async () => {
-    try {
-      // Stop any existing audio stream first
-      if (audioStream) {
-        audioStream.getTracks().forEach(track => track.stop());
-      }
+    // Don't request again if already enabled
+    if (micEnabled && audioStream) {
+      return;
+    }
 
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: false,
         audio: true
