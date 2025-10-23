@@ -152,7 +152,8 @@ const JobApplication = () => {
       const tokenExpiry = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
       // Send selection email with interview link
-      const { error: emailError } = await supabase.functions.invoke('send-selection-email', {
+      console.log('Sending selection email to:', formData.email);
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-selection-email', {
         body: {
           candidateName: formData.fullName,
           candidateEmail: formData.email,
@@ -164,7 +165,13 @@ const JobApplication = () => {
 
       if (emailError) {
         console.error('Error sending email:', emailError);
-        // Don't fail the submission if email fails
+        toast({
+          title: 'Email sending failed',
+          description: 'Application submitted but email could not be sent. Please check your inbox or contact HR.',
+          variant: 'destructive',
+        });
+      } else {
+        console.log('Email sent successfully:', emailData);
       }
 
       setSubmitted(true);
