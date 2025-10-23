@@ -148,7 +148,7 @@ const JobApplication = () => {
         });
 
       // Generate interview link
-      const interviewLink = `${window.location.origin}/interview/${token}`;
+      const interviewLink = `${window.location.origin}/interview/login?token=${token}`;
       const tokenExpiry = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
       // Send selection email with interview link
