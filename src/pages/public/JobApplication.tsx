@@ -115,7 +115,7 @@ const JobApplication = () => {
           job_role_id: job.id,
           file_url: publicUrl,
           screening_status: 'pending',
-          source: 'real', // Mark as real applicant
+          source: 'real',
           parsed_data: {
             cover_letter: formData.coverLetter
           }
@@ -137,7 +137,7 @@ const JobApplication = () => {
       // Create interview token for immediate interview
       const token = crypto.randomUUID();
       const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days validity
+      expiresAt.setDate(expiresAt.getDate() + 7);
 
       await supabase
         .from('interview_tokens')
@@ -152,8 +152,8 @@ const JobApplication = () => {
       const tokenExpiry = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
       // Queue selection email for reliable delivery
-      console.log('Queueing selection email to:', formData.email);
-      const { error: emailQueueError } = await supabase
+      console.log('Queueing selection email for:', formData.email);
+      const { error: queueError } = await supabase
         .from('email_queue')
         .insert({
           email_type: 'selection',
@@ -166,13 +166,18 @@ const JobApplication = () => {
             tokenExpiry: tokenExpiry,
           },
           scheduled_for: new Date().toISOString(),
-          status: 'pending'
+          status: 'pending',
         });
 
-      if (emailQueueError) {
-        console.error('Error queueing email:', emailQueueError);
+      if (queueError) {
+        console.error('Error queueing email:', queueError);
+        toast({
+          title: 'Email queueing failed',
+          description: 'Application submitted but email could not be queued. Please check your inbox or contact HR.',
+          variant: 'destructive',
+        });
       } else {
-        console.log('Email queued successfully');
+        console.log('Email queued successfully for:', formData.email);
       }
 
       setSubmitted(true);
