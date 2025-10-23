@@ -15,6 +15,10 @@ export const useSpeechInterview = (interviewContext: any) => {
   
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const silenceTimerRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -86,11 +90,40 @@ export const useSpeechInterview = (interviewContext: any) => {
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.9;
-      utterance.pitch = 1;
+      utterance.pitch = 1.1;
       utterance.volume = 1;
 
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
+      // Select female voice
+      const voices = window.speechSynthesis.getVoices();
+      const femaleVoice = voices.find(voice => 
+        voice.name.includes('Female') || 
+        voice.name.includes('female') ||
+        voice.name.includes('Google UK English Female') ||
+        voice.name.includes('Microsoft Zira') ||
+        voice.name.includes('Samantha')
+      );
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+      }
+
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        // Stop listening while AI speaks
+        if (recognitionRef.current && isListening) {
+          recognitionRef.current.stop();
+          setIsListening(false);
+        }
+      };
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        // Resume listening after AI finishes speaking
+        setTimeout(() => {
+          if (recognitionRef.current && isConnected) {
+            recognitionRef.current.start();
+            setIsListening(true);
+          }
+        }, 500);
+      };
       utterance.onerror = () => setIsSpeaking(false);
 
       synthesisRef.current = utterance;
@@ -98,8 +131,76 @@ export const useSpeechInterview = (interviewContext: any) => {
     }
   };
 
+  // Silence detection using Web Audio API
+  const startSilenceDetection = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      
+      audioContextRef.current = new AudioContext();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 2048;
+      source.connect(analyserRef.current);
+
+      const dataArray = new Uint8Array(analyserRef.current.fftSize);
+      
+      const detectSilence = () => {
+        if (!analyserRef.current || !isListening) return;
+        
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        
+        // Silence threshold
+        if (average < 5) {
+          if (!silenceTimerRef.current) {
+            silenceTimerRef.current = window.setTimeout(() => {
+              // 3 seconds of silence detected - stop recognition briefly
+              console.log('Silence detected, processing speech...');
+            }, 3000);
+          }
+        } else {
+          // Sound detected, clear silence timer
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+          }
+        }
+        
+        requestAnimationFrame(detectSilence);
+      };
+      
+      detectSilence();
+    } catch (error) {
+      console.error('Error setting up silence detection:', error);
+    }
+  };
+
+  const stopSilenceDetection = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
   const startConversation = useCallback(async () => {
     setIsConnected(true);
+    
+    // Load voices
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+    }
+    
+    // Start silence detection
+    await startSilenceDetection();
     
     // Start with AI introduction
     const intro = "Hello! I'm your AI interviewer. I'll be asking you a few questions about your background and experience. Let's begin. Can you tell me about yourself?";
@@ -111,14 +212,6 @@ export const useSpeechInterview = (interviewContext: any) => {
     };
     setMessages([introMessage]);
     speakText(intro);
-
-    // Start listening after intro
-    setTimeout(() => {
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-        setIsListening(true);
-      }
-    }, 1000);
   }, [interviewContext]);
 
   const endConversation = useCallback(() => {
@@ -126,6 +219,7 @@ export const useSpeechInterview = (interviewContext: any) => {
       recognitionRef.current.stop();
     }
     window.speechSynthesis.cancel();
+    stopSilenceDetection();
     setIsListening(false);
     setIsSpeaking(false);
     setIsConnected(false);
