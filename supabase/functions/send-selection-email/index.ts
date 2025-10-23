@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending selection email to:", candidateEmail);
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const mailFrom = "SynchroHR <synchro-hr@synchrohr.com>";
+    const mailFrom = "SynchroHR <onboarding@resend.dev>";
     
     if (!resendApiKey) {
       throw new Error("RESEND_API_KEY not configured");
@@ -47,18 +47,45 @@ const handler = async (req: Request): Promise<Response> => {
     .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; }
     .header { background-color: #4CAF50; color: white; padding: 10px; text-align: center; }
     .content { padding: 20px; }
+    .interview-button { 
+      display: inline-block; 
+      background-color: #2196F3; 
+      color: white; 
+      padding: 15px 30px; 
+      text-decoration: none; 
+      border-radius: 5px; 
+      font-weight: bold;
+      margin: 20px 0;
+    }
     .footer { font-size: 12px; color: #777; padding: 10px; text-align: center; }
+    .highlight { background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h2>Congratulations! You are Selected</h2>
+      <h2>🎉 Congratulations! You are Selected</h2>
     </div>
     <div class="content">
       <p>Dear ${candidateName},</p>
-      <p>We are excited to inform you that you have been selected for the <strong>${jobTitle}</strong> position at SynchroHR.</p>
-      <p>Our HR team will reach out soon with details on next steps.</p>
+      <p>We are excited to inform you that you have been selected for the <strong>${jobTitle}</strong> position at SynchroHR!</p>
+      
+      <div class="highlight">
+        <strong>Next Step: AI-Powered Interview</strong>
+        <p>Please complete your AI interview by clicking the button below. This link expires on ${tokenExpiry}.</p>
+      </div>
+      
+      <div style="text-align: center;">
+        <a href="${interviewLink}" class="interview-button">Start AI Interview</a>
+      </div>
+      
+      <p style="margin-top: 20px;">The AI interview will assess your skills and qualifications. Please ensure you have:</p>
+      <ul>
+        <li>A stable internet connection</li>
+        <li>A quiet environment</li>
+        <li>About 30 minutes to complete the interview</li>
+      </ul>
+      
       <p>Thank you for your time and interest. We look forward to working with you!</p>
     </div>
     <div class="footer">
