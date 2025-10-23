@@ -166,8 +166,11 @@ VITE_SUPABASE_PUBLISHABLE_KEY=(Use VITE_ prefixes for client‑side variables)
 
 
 git clone https://github.com/DhivyaBalakumar/SynchroHR1.git
+
 cd SynchroHR1
+
 npm install
+
 npm run dev
 
 Visit (http://localhost:8080/)
