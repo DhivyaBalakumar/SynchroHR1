@@ -151,27 +151,28 @@ const JobApplication = () => {
       const interviewLink = `${window.location.origin}/interview/login?token=${token}`;
       const tokenExpiry = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-      // Send selection email with interview link
-      console.log('Sending selection email to:', formData.email);
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-selection-email', {
-        body: {
-          candidateName: formData.fullName,
-          candidateEmail: formData.email,
-          jobTitle: job.title,
-          interviewLink: interviewLink,
-          tokenExpiry: tokenExpiry,
-        }
-      });
-
-      if (emailError) {
-        console.error('Error sending email:', emailError);
-        toast({
-          title: 'Email sending failed',
-          description: 'Application submitted but email could not be sent. Please check your inbox or contact HR.',
-          variant: 'destructive',
+      // Queue selection email for reliable delivery
+      console.log('Queueing selection email to:', formData.email);
+      const { error: emailQueueError } = await supabase
+        .from('email_queue')
+        .insert({
+          email_type: 'selection',
+          resume_id: resumeData.id,
+          email_data: {
+            candidateName: formData.fullName,
+            candidateEmail: formData.email,
+            jobTitle: job.title,
+            interviewLink: interviewLink,
+            tokenExpiry: tokenExpiry,
+          },
+          scheduled_for: new Date().toISOString(),
+          status: 'pending'
         });
+
+      if (emailQueueError) {
+        console.error('Error queueing email:', emailQueueError);
       } else {
-        console.log('Email sent successfully:', emailData);
+        console.log('Email queued successfully');
       }
 
       setSubmitted(true);
