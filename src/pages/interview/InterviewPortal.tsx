@@ -373,11 +373,11 @@ export const InterviewPortal = () => {
   );
 
   const renderInterview = () => (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold">AI Voice Interview</h2>
+            <h2 className="text-xl font-bold">AI Interview</h2>
             <p className="text-sm text-muted-foreground mt-1">
               Position: {jobTitle}
             </p>
@@ -391,6 +391,7 @@ export const InterviewPortal = () => {
           jobTitle: jobTitle,
           resumeData: {}
         }}
+        videoStream={mediaStream}
         onComplete={handleCompleteInterview}
       />
     </div>
