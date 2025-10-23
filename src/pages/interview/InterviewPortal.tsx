@@ -120,11 +120,18 @@ export const InterviewPortal = () => {
       });
       
       setMediaStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
       setCameraEnabled(true);
       setMicEnabled(true);
+      
+      // Wait for next tick to ensure video element is rendered
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(err => {
+            console.error('Error playing video:', err);
+          });
+        }
+      }, 100);
 
       toast({
         title: 'Camera Ready',
@@ -289,6 +296,7 @@ export const InterviewPortal = () => {
             <video
               ref={videoRef}
               autoPlay
+              playsInline
               muted
               className="w-full h-full object-cover"
             />
