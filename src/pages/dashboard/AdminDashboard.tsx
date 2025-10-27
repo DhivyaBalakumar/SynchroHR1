@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { FloatingChatbot } from '@/components/FloatingChatbot';
 import { Progress } from '@/components/ui/progress';
+import { BulkCVUpload } from '@/components/admin/BulkCVUpload';
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -450,12 +451,22 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
 
+        {/* Bulk CV Upload */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="mb-8"
+        >
+          <BulkCVUpload />
+        </motion.div>
+
         {/* User Management Analytics */}
         <div className="mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
+            transition={{ delay: 1.0 }}
           >
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-6">

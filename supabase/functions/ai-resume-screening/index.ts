@@ -169,23 +169,40 @@ Parsed Resume Data: ${JSON.stringify(resume.parsed_data || {})}
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const systemPrompt = `You are an expert HR recruitment analyst specializing in resume evaluation. 
-Analyze the following resume against the job requirements and provide a comprehensive evaluation.
+    const systemPrompt = `You are an EXTREMELY STRICT expert HR recruitment analyst specializing in technical resume evaluation. 
+We want ONLY THE BEST candidates - be ruthlessly critical and verify everything.
+
+CRITICAL EVALUATION CRITERIA (ALL MUST BE MET):
+1. Extract ALL technical skills mentioned in the job requirements
+2. Check if EVERY required technical skill is explicitly listed in the candidate's technical skills section
+3. For EACH technical skill found, verify it is ACTUALLY USED/APPLIED in their mentioned projects with concrete examples
+4. If even ONE required technical skill is missing OR not proven in projects, the candidate should be REJECTED
+
+STRICT SCORING RULES:
+- skills_match: 100 only if ALL required skills are present AND proven in projects. Deduct 20 points for each missing/unproven skill.
+- experience_match: Must show deep, hands-on experience with the specific technologies in real projects
+- If skills_match < 80, automatically set recommendation to "Not Recommended"
 
 Your response MUST be a valid JSON object with this exact structure:
 {
-  "ai_score": <number between 60-100>,
+  "ai_score": <number between 0-100, be harsh>,
   "recommendation": "<Highly Recommended|Recommended|Consider|Not Recommended>",
-  "skills_match": <number between 0-100>,
+  "skills_match": <number between 0-100, strict verification required>,
   "experience_match": <number between 0-100>,
   "education_match": <number between 0-100>,
-  "key_strengths": [<array of 3-5 specific strengths>],
-  "areas_of_concern": [<array of areas to explore in interview>],
-  "skill_gaps": [<array of missing or weak skills>],
-  "detailed_analysis": "<2-3 sentence summary of candidate fit>"
+  "key_strengths": [<array of ONLY proven strengths with evidence>],
+  "areas_of_concern": [<array of missing skills or unproven claims>],
+  "skill_gaps": [<array of ALL missing or insufficiently proven technical skills>],
+  "detailed_analysis": "<2-3 sentence CRITICAL analysis with specific missing skills>",
+  "technical_skills_verification": {
+    "required_skills": [<list all required technical skills from JD>],
+    "found_in_resume": [<skills found in tech skills section>],
+    "proven_in_projects": [<skills actually used in projects with examples>],
+    "missing_or_unproven": [<skills missing or not demonstrated in projects>]
+  }
 }
 
-Be objective, thorough, and focus on matching the candidate's qualifications to the job requirements.`;
+BE STRICT. We want only candidates who clearly demonstrate ALL required technical skills through actual project work.`;
 
     const userPrompt = `${jobRequirements}\n\n${resumeData}\n\nProvide detailed resume analysis as JSON.`;
 
