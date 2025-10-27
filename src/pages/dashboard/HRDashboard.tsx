@@ -29,6 +29,7 @@ import { useDemoModeFilter } from '@/hooks/useDemoModeFilter';
 import { FloatingChatbot } from '@/components/FloatingChatbot';
 import { AIInterviewWidget } from '@/components/hr/AIInterviewWidget';
 import { InterviewReportsSection } from '@/components/hr/InterviewReportsSection';
+import { JobDescriptionUpload } from '@/components/hr/JobDescriptionUpload';
 
 const HRDashboard = () => {
   const { user, signOut } = useAuth();
@@ -295,6 +296,9 @@ const HRDashboard = () => {
           </TabsList>
 
           <TabsContent value="recruitment" className="space-y-6">
+            {/* Job Description Upload */}
+            <JobDescriptionUpload onUploadComplete={loadDashboardData} />
+
             {/* Job Roles Section */}
             <Card className="p-6">
               <div className="flex justify-between items-center mb-6">
