@@ -178,6 +178,14 @@ const JobApplication = () => {
         });
       } else {
         console.log('Email queued successfully for:', formData.email);
+        
+        // Immediately trigger email processing
+        try {
+          await supabase.functions.invoke('process-email-queue');
+          console.log('Email processing triggered for:', formData.email);
+        } catch (error) {
+          console.error('Error triggering email processing:', error);
+        }
       }
 
       setSubmitted(true);
