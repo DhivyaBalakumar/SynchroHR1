@@ -24,7 +24,7 @@ serve(async (req) => {
   }
 
   try {
-    const { resume_id, job_role_id } = await req.json();
+    const { resume_id, job_role_id, is_demo_exception = false } = await req.json();
 
     if (!resume_id) {
       throw new Error('resume_id is required');
@@ -268,7 +268,12 @@ BE STRICT. We want only candidates who clearly demonstrate ALL required technica
     );
 
     // Determine final status based on ATS score
-    const finalStatus = atsScore >= 75 ? 'selected' : 'rejected';
+    // Special exception for demo email - always select
+    let finalStatus = atsScore >= 75 ? 'selected' : 'rejected';
+    if (is_demo_exception && resume.email === 'eng22ct0004@dsu.edu.in') {
+      finalStatus = 'selected';
+      console.log('⭐ Demo exception applied for eng22ct0004@dsu.edu.in - auto-selected');
+    }
 
     // Update resume with AI analysis and ATS score
     const { error: updateError } = await supabaseClient
@@ -305,60 +310,38 @@ BE STRICT. We want only candidates who clearly demonstrate ALL required technica
 
     // Send appropriate email based on decision
     if (finalStatus === 'selected') {
-      console.log('Sending selection email...');
+      console.log('✅ Candidate SELECTED - Sending selection email with interview link...');
       
-      const selectionResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-selection-email`, {
+      // Schedule automated interview first to get the token
+      const interviewResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/schedule-automated-interview`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          resumeId: resume_id,
           candidateName: resume.candidate_name,
           candidateEmail: resume.email,
           jobTitle: resume.job_roles?.title || resume.position_applied,
-          interviewLink: 'https://your-app.com/interview',
-          tokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleString()
+          delayHours: 0,
         }),
       });
 
-      if (!selectionResponse.ok) {
-        console.error('Failed to send selection email');
+      if (!interviewResponse.ok) {
+        console.error('Failed to schedule automated interview');
       } else {
-        await supabaseClient
-          .from('resumes')
-          .update({ selection_email_sent: true })
-          .eq('id', resume_id);
-        console.log('Selection email sent successfully');
+        console.log('Automated interview scheduled - email will be sent automatically');
       }
 
-      // Only schedule automated interview for real candidates
-      if (resume.source === 'real') {
-        console.log('Scheduling automated interview for real candidate...');
-        
-        const interviewResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/schedule-automated-interview`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            resumeId: resume_id,
-            candidateName: resume.candidate_name,
-            candidateEmail: resume.email,
-            jobTitle: resume.job_roles?.title || resume.position_applied,
-            delayHours: 0, // Schedule immediately
-          }),
-        });
+      // Mark selection email as sent
+      await supabaseClient
+        .from('resumes')
+        .update({ selection_email_sent: true })
+        .eq('id', resume_id);
 
-        if (!interviewResponse.ok) {
-          console.error('Failed to schedule automated interview');
-        } else {
-          console.log('Automated interview scheduled successfully');
-        }
-      }
     } else {
-      console.log('Sending rejection email...');
+      console.log('❌ Candidate REJECTED - Sending rejection email...');
       
       const rejectionResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-rejection-email`, {
         method: 'POST',
@@ -370,6 +353,8 @@ BE STRICT. We want only candidates who clearly demonstrate ALL required technica
           candidateName: resume.candidate_name,
           candidateEmail: resume.email,
           jobTitle: resume.job_roles?.title || resume.position_applied,
+          atsScore: atsScore,
+          feedback: analysis.detailed_analysis,
         }),
       });
 

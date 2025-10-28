@@ -10,6 +10,8 @@ interface RejectionEmailRequest {
   candidateName: string;
   candidateEmail: string;
   jobTitle: string;
+  atsScore?: number;
+  feedback?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -21,7 +23,9 @@ const handler = async (req: Request): Promise<Response> => {
     const { 
       candidateName, 
       candidateEmail, 
-      jobTitle 
+      jobTitle,
+      atsScore = 0,
+      feedback = 'After careful consideration'
     }: RejectionEmailRequest = await req.json();
 
     console.log("Sending rejection email to:", candidateEmail);
@@ -37,13 +41,17 @@ const handler = async (req: Request): Promise<Response> => {
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Status Update</title>
+  <title>Application Status Update</title>
   <style>
-    body { font-family: Arial, sans-serif; }
-    .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; }
-    .header { background-color: #d9534f; color: white; padding: 10px; text-align: center; }
-    .content { padding: 20px; }
-    .footer { font-size: 12px; color: #777; padding: 10px; text-align: center; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #d9534f 0%, #c9302c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+    .score-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }
+    .feedback-box { background: #e3f2fd; padding: 15px; margin: 20px 0; border-radius: 5px; }
+    .footer { font-size: 12px; color: #777; padding: 10px; text-align: center; margin-top: 20px; }
+    .score-label { font-weight: bold; color: #856404; }
+    h3 { color: #667eea; margin-top: 0; }
   </style>
 </head>
 <body>
@@ -52,13 +60,38 @@ const handler = async (req: Request): Promise<Response> => {
       <h2>Application Status Update</h2>
     </div>
     <div class="content">
-      <p>Dear ${candidateName},</p>
+      <p>Dear <strong>${candidateName}</strong>,</p>
       <p>Thank you for taking the time to apply for the <strong>${jobTitle}</strong> position at SynchroHR.</p>
-      <p>After careful consideration, we regret to inform you that we will not be moving forward with your application at this time.</p>
-      <p>We wish you all the best in your future endeavors.</p>
+      
+      ${atsScore > 0 ? `
+      <div class="score-box">
+        <p class="score-label">🎯 Your ATS Score: ${atsScore}%</p>
+        <p style="margin: 5px 0 0 0; font-size: 14px;">Minimum required score: 75%</p>
+      </div>
+      ` : ''}
+      
+      <p>After careful review of your application through our AI-powered screening system, we regret to inform you that we will not be moving forward with your application at this time.</p>
+      
+      ${feedback && feedback !== 'After careful consideration' ? `
+      <div class="feedback-box">
+        <h3>💡 Feedback for Future Applications:</h3>
+        <p>${feedback}</p>
+      </div>
+      ` : ''}
+      
+      <p><strong>We encourage you to:</strong></p>
+      <ul>
+        <li>Review the job requirements carefully and ensure your resume highlights relevant skills</li>
+        <li>Include specific examples and projects demonstrating your technical abilities</li>
+        <li>Apply again when you have gained additional experience in the required areas</li>
+      </ul>
+      
+      <p>We appreciate your interest in SynchroHR and wish you all the best in your career journey.</p>
+      
+      <p>Best regards,<br/><strong>The SynchroHR Team</strong></p>
     </div>
     <div class="footer">
-      <p>Best regards,<br>SynchroHR Team<br>SynchroHR<br><a href="mailto:synchro-hr@synchrohr.com">synchro-hr@synchrohr.com</a></p>
+      <p>© 2025 SynchroHR. All rights reserved.</p>
     </div>
   </div>
 </body>

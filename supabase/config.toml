@@ -54,6 +54,9 @@ verify_jwt = false
 [functions.send-rejection-email]
 verify_jwt = false
 
+[functions.send-application-confirmation]
+verify_jwt = false
+
 [functions.send-selection-email]
 verify_jwt = false
 

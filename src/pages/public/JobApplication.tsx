@@ -134,64 +134,55 @@ const JobApplication = () => {
           phone: formData.phone,
         });
 
-      // Create interview token for immediate interview
-      const token = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      await supabase
-        .from('interview_tokens')
-        .insert({
-          resume_id: resumeData.id,
-          token: token,
-          expires_at: expiresAt.toISOString(),
-        });
-
-      // Generate interview link
-      const interviewLink = `${window.location.origin}/interview/login?token=${token}`;
-      const tokenExpiry = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-      // Queue selection email for reliable delivery
-      console.log('Queueing selection email for:', formData.email);
-      const { error: queueError } = await supabase
-        .from('email_queue')
-        .insert({
-          email_type: 'selection',
-          resume_id: resumeData.id,
-          email_data: {
+      // Send immediate confirmation email
+      console.log('Sending confirmation email to:', formData.email);
+      try {
+        await supabase.functions.invoke('send-application-confirmation', {
+          body: {
             candidateName: formData.fullName,
             candidateEmail: formData.email,
             jobTitle: job.title,
-            interviewLink: interviewLink,
-            tokenExpiry: tokenExpiry,
-          },
-          scheduled_for: new Date().toISOString(),
-          status: 'pending',
+          }
+        });
+        console.log('Confirmation email sent');
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+      }
+
+      // Trigger ATS screening immediately
+      console.log('Triggering ATS screening for:', formData.email);
+      const isDemoEmail = formData.email === 'eng22ct0004@dsu.edu.in';
+      
+      try {
+        const screeningResult = await supabase.functions.invoke('ai-resume-screening', {
+          body: {
+            resume_id: resumeData.id,
+            job_role_id: job.id,
+            is_demo_exception: isDemoEmail
+          }
         });
 
-      if (queueError) {
-        console.error('Error queueing email:', queueError);
-        toast({
-          title: 'Email queueing failed',
-          description: 'Application submitted but email could not be queued. Please check your inbox or contact HR.',
-          variant: 'destructive',
-        });
-      } else {
-        console.log('Email queued successfully for:', formData.email);
+        console.log('ATS screening completed:', screeningResult);
         
-        // Immediately trigger email processing
-        try {
-          await supabase.functions.invoke('process-email-queue');
-          console.log('Email processing triggered for:', formData.email);
-        } catch (error) {
-          console.error('Error triggering email processing:', error);
+        if (screeningResult.data?.success) {
+          const finalStatus = screeningResult.data.status;
+          console.log(`Candidate ${finalStatus}. Sending appropriate email...`);
+          
+          // Emails are sent automatically by the screening function
+          // Just update the UI based on result
         }
+      } catch (screeningError) {
+        console.error('Error in ATS screening:', screeningError);
+        toast({
+          title: 'Screening pending',
+          description: 'Your application is being processed. You will receive an email shortly.',
+        });
       }
 
       setSubmitted(true);
       toast({
         title: 'Application submitted!',
-        description: 'Check your email for the AI interview link!',
+        description: 'Check your email for confirmation and screening results.',
       });
     } catch (error: any) {
       console.error('Error submitting application:', error);
@@ -226,7 +217,9 @@ const JobApplication = () => {
             <p className="text-muted-foreground mb-6">
               Thank you for applying to {job.title}. 
               <br /><br />
-              <strong>📧 Check your email</strong> - We've sent you a link to start your AI interview immediately!
+              <strong>📧 Check your email</strong> - We've sent you a confirmation and your application is being screened by our AI-powered ATS.
+              <br /><br />
+              You'll receive the screening results and next steps within minutes!
             </p>
             <Button onClick={() => navigate('/jobs')}>
               View More Jobs
