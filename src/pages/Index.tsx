@@ -377,7 +377,7 @@ const Index = () => {
             Ready to Transform Your HR?
           </h2>
           <p className="text-base md:text-lg lg:text-xl text-muted-foreground px-4">
-            Join thousands of companies using SynchroHR to build better workplaces
+            Experience the future of AI-powered HR management with intelligent automation
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4 pt-2">
             <Link to="/auth?mode=signup" className="w-full sm:w-auto">
