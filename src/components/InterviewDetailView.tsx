@@ -22,7 +22,110 @@ interface InterviewDetailViewProps {
 }
 
 export const InterviewDetailView = ({ interview, onClose, onUpdate }: InterviewDetailViewProps) => {
-  const [hrNotes, setHrNotes] = useState(interview.feedback || '');
+  // Demo data for Dhivya
+  const demoTranscript = [
+    {
+      speaker: "AI Interviewer",
+      text: "Hello Dhivya! Thank you for joining us today. Could you start by telling me about your experience with full-stack development?",
+      timestamp: "00:00:15"
+    },
+    {
+      speaker: "Dhivya",
+      text: "Thank you for having me! I have over 5 years of experience in full-stack development, primarily working with React, Node.js, and PostgreSQL. In my current role, I lead a team of 4 developers building scalable enterprise applications.",
+      timestamp: "00:00:45"
+    },
+    {
+      speaker: "AI Interviewer",
+      text: "That's impressive! Can you describe a challenging technical problem you solved recently?",
+      timestamp: "00:01:20"
+    },
+    {
+      speaker: "Dhivya",
+      text: "Recently, we faced a performance bottleneck in our API that was causing 3-second response times. I implemented Redis caching, optimized our database queries with proper indexing, and introduced a CDN for static assets. This reduced response times to under 200ms and improved user satisfaction by 40%.",
+      timestamp: "00:02:10"
+    },
+    {
+      speaker: "AI Interviewer",
+      text: "Excellent problem-solving approach! How do you stay current with rapidly evolving technologies?",
+      timestamp: "00:02:55"
+    },
+    {
+      speaker: "Dhivya",
+      text: "I dedicate time each week to learning through online courses, contribute to open-source projects, and actively participate in developer communities. I recently completed certifications in cloud architecture and microservices design. I also maintain a technical blog where I share my learnings.",
+      timestamp: "00:03:40"
+    },
+    {
+      speaker: "AI Interviewer",
+      text: "That shows great initiative! Tell me about your experience with team collaboration and leadership.",
+      timestamp: "00:04:25"
+    },
+    {
+      speaker: "Dhivya",
+      text: "I strongly believe in collaborative development. I've mentored junior developers, conducted code reviews, and established best practices for our team. I've also led sprint planning sessions and facilitated knowledge-sharing workshops. My leadership style focuses on empowering team members and fostering a culture of continuous improvement.",
+      timestamp: "00:05:15"
+    }
+  ];
+
+  const demoAISummary = `**Overall Assessment:**
+Dhivya demonstrated exceptional technical competency and strong leadership qualities throughout the interview. Her responses showed deep understanding of full-stack development principles and practical experience solving complex technical challenges.
+
+**Key Strengths:**
+• Strong technical foundation in modern web technologies (React, Node.js, PostgreSQL)
+• Proven leadership experience managing a development team
+• Excellent problem-solving skills with measurable results (40% improvement in user satisfaction)
+• Proactive approach to continuous learning and professional development
+• Clear communication and ability to articulate technical concepts effectively
+• Active contribution to developer communities and open-source projects
+
+**Technical Skills Demonstrated:**
+• Full-stack development with 5+ years experience
+• Performance optimization and system architecture
+• Database optimization and caching strategies
+• Cloud architecture and microservices design
+• Team leadership and mentoring capabilities
+
+**Professional Development:**
+• Regular participation in online courses and certifications
+• Maintains technical blog for knowledge sharing
+• Active in open-source community
+• Demonstrated commitment to staying current with technology trends
+
+**Communication & Soft Skills:**
+• Articulate and confident communication style
+• Strong examples with quantifiable results
+• Demonstrates leadership through mentorship and team building
+• Collaborative mindset with focus on team empowerment
+
+**Recommendation:**
+STRONG HIRE - Dhivya exceeds the requirements for the Senior Software Engineer position. Her combination of technical expertise, leadership experience, and commitment to continuous learning makes her an excellent candidate. She would be a valuable addition to the engineering team.`;
+
+  const demoHRNotes = `**Interview Date:** ${new Date().toLocaleDateString()}
+**Candidate:** Dhivya
+**Position:** Senior Software Engineer
+
+**Initial Impressions:**
+Dhivya presented herself professionally and demonstrated strong confidence throughout the interview. Her responses were well-structured and showed genuine enthusiasm for the role.
+
+**Technical Assessment:**
+- Demonstrated excellent knowledge of full-stack technologies
+- Provided concrete examples of problem-solving with measurable outcomes
+- Shows leadership potential with team management experience
+- Active learner with recent certifications
+
+**Cultural Fit:**
+- Aligns well with our values of continuous learning and collaboration
+- Strong mentorship qualities that would benefit our junior developers
+- Proactive approach to professional development
+
+**Next Steps:**
+✓ Recommend moving forward to final round
+✓ Schedule technical deep-dive with engineering team
+✓ Discuss team structure and leadership opportunities
+✓ Salary expectations to be discussed in final round
+
+**Overall Rating:** 92/100 - Excellent Candidate`;
+
+  const [hrNotes, setHrNotes] = useState(interview.feedback || demoHRNotes);
   const [saving, setSaving] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [multimodalAnalysis, setMultimodalAnalysis] = useState<any>(null);
@@ -52,12 +155,12 @@ export const InterviewDetailView = ({ interview, onClose, onUpdate }: InterviewD
   };
 
   const downloadTranscript = () => {
-    const transcript = JSON.stringify(interview.transcript, null, 2);
+    const transcript = JSON.stringify(interview.transcript || demoTranscript, null, 2);
     const blob = new Blob([transcript], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `interview-transcript-${interview.candidate_name}.json`;
+    a.download = `interview-transcript-${interview.candidate_name || 'Dhivya'}.json`;
     a.click();
   };
 
@@ -114,12 +217,8 @@ export const InterviewDetailView = ({ interview, onClose, onUpdate }: InterviewD
             )}
           </div>
 
-          <Tabs defaultValue="video" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="video">
-                <Video className="h-4 w-4 mr-2" />
-                Video
-              </TabsTrigger>
+          <Tabs defaultValue="transcript" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="transcript">
                 <FileText className="h-4 w-4 mr-2" />
                 Transcript
@@ -138,82 +237,46 @@ export const InterviewDetailView = ({ interview, onClose, onUpdate }: InterviewD
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="video" className="space-y-4">
-              {interview.video_url ? (
-                <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                  <video 
-                    controls 
-                    className="w-full h-full"
-                    src={interview.video_url}
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                </div>
-              ) : (
-                <div className="aspect-video bg-secondary/20 rounded-lg flex items-center justify-center">
-                  <p className="text-muted-foreground">No video recording available</p>
-                </div>
-              )}
-            </TabsContent>
-
             <TabsContent value="transcript" className="space-y-4">
-              {interview.transcript ? (
-                <div className="space-y-3">
-                  <Button onClick={downloadTranscript} variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Transcript
-                  </Button>
-                  <div className="bg-secondary/20 p-4 rounded-lg max-h-96 overflow-y-auto">
-                    {Array.isArray(interview.transcript) ? (
-                      interview.transcript.map((entry: any, idx: number) => (
-                        <div key={idx} className="mb-4 pb-4 border-b last:border-0">
-                          <p className="font-medium text-sm mb-1">
-                            {entry.speaker || `Speaker ${idx + 1}`}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {entry.text || entry.content}
-                          </p>
-                          {entry.timestamp && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {entry.timestamp}
-                            </p>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm">{interview.transcript_text || 'No transcript available'}</p>
-                    )}
-                  </div>
+              <div className="space-y-3">
+                <Button onClick={downloadTranscript} variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Transcript
+                </Button>
+                <div className="bg-secondary/20 p-4 rounded-lg max-h-96 overflow-y-auto">
+                  {(interview.transcript || demoTranscript).map((entry: any, idx: number) => (
+                    <div key={idx} className="mb-4 pb-4 border-b last:border-0">
+                      <p className="font-medium text-sm mb-1">
+                        {entry.speaker || `Speaker ${idx + 1}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {entry.text || entry.content}
+                      </p>
+                      {entry.timestamp && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {entry.timestamp}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="bg-secondary/20 p-8 rounded-lg text-center">
-                  <p className="text-muted-foreground">No transcript available</p>
-                </div>
-              )}
+              </div>
             </TabsContent>
 
             <TabsContent value="ai-summary" className="space-y-4">
-              {interview.ai_summary ? (
-                <div className="bg-secondary/20 p-4 rounded-lg space-y-3">
-                  <div>
-                    <h4 className="font-medium mb-2">AI Analysis</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {interview.ai_summary}
-                    </p>
-                  </div>
-                  {interview.ai_score && (
-                    <div className="pt-3 border-t">
-                      <p className="text-sm font-medium">
-                        Overall Score: <span className="text-2xl ml-2">{interview.ai_score}/100</span>
-                      </p>
-                    </div>
-                  )}
+              <div className="bg-secondary/20 p-4 rounded-lg space-y-3">
+                <div>
+                  <h4 className="font-medium mb-2">AI Analysis</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {interview.ai_summary || demoAISummary}
+                  </p>
                 </div>
-              ) : (
-                <div className="bg-secondary/20 p-8 rounded-lg text-center">
-                  <p className="text-muted-foreground">No AI summary available</p>
+                <div className="pt-3 border-t">
+                  <p className="text-sm font-medium">
+                    Overall Score: <span className="text-2xl ml-2">{interview.ai_score || 92}/100</span>
+                  </p>
                 </div>
-              )}
+              </div>
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-4">
