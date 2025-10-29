@@ -324,14 +324,31 @@ BE STRICT. We want only candidates who clearly demonstrate ALL required technica
           candidateName: resume.candidate_name,
           candidateEmail: resume.email,
           jobTitle: resume.job_roles?.title || resume.position_applied,
-          delayHours: 0,
+          delayHours: 0, // Send immediately
         }),
       });
 
       if (!interviewResponse.ok) {
-        console.error('Failed to schedule automated interview');
+        const errorText = await interviewResponse.text();
+        console.error('Failed to schedule automated interview:', errorText);
       } else {
-        console.log('Automated interview scheduled - email will be sent automatically');
+        const interviewData = await interviewResponse.json();
+        console.log('Automated interview scheduled:', interviewData);
+        
+        // Trigger email queue processing immediately
+        console.log('Triggering immediate email queue processing...');
+        try {
+          await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-email-queue`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          console.log('Email queue processing triggered successfully');
+        } catch (queueError) {
+          console.error('Error triggering email queue:', queueError);
+        }
       }
 
       // Mark selection email as sent
@@ -343,25 +360,31 @@ BE STRICT. We want only candidates who clearly demonstrate ALL required technica
     } else {
       console.log('❌ Candidate REJECTED - Sending rejection email...');
       
-      const rejectionResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-rejection-email`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          candidateName: resume.candidate_name,
-          candidateEmail: resume.email,
-          jobTitle: resume.job_roles?.title || resume.position_applied,
-          atsScore: atsScore,
-          feedback: analysis.detailed_analysis,
-        }),
-      });
+      try {
+        const rejectionResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-rejection-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            candidateName: resume.candidate_name,
+            candidateEmail: resume.email,
+            jobTitle: resume.job_roles?.title || resume.position_applied,
+            atsScore: atsScore,
+            feedback: analysis.detailed_analysis,
+          }),
+        });
 
-      if (!rejectionResponse.ok) {
-        console.error('Failed to send rejection email');
-      } else {
-        console.log('Rejection email sent successfully');
+        if (!rejectionResponse.ok) {
+          const errorText = await rejectionResponse.text();
+          console.error('Failed to send rejection email:', errorText);
+        } else {
+          const rejectionData = await rejectionResponse.json();
+          console.log('✅ Rejection email sent successfully:', rejectionData);
+        }
+      } catch (emailError) {
+        console.error('Exception while sending rejection email:', emailError);
       }
     }
 

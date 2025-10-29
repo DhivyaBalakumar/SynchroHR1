@@ -31,14 +31,16 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending selection email to:", candidateEmail);
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const mailFrom = Deno.env.get("MAIL_FROM") || "SynchroHR <onboarding@resend.dev>";
+    const mailFrom = "SynchroHR <onboarding@resend.dev>";
     
     if (!resendApiKey) {
       console.error("RESEND_API_KEY not configured");
       throw new Error("RESEND_API_KEY not configured");
     }
 
-    console.log("Using mail from:", mailFrom);
+    console.log("Using Resend API with from:", mailFrom);
+    console.log("Sending to:", candidateEmail);
+    console.log("Interview link:", interviewLink);
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -118,17 +120,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (!resendResponse.ok) {
       console.error("Resend API error response:", resendData);
       console.error("Resend API status:", resendResponse.status);
-      
-      // Special handling for domain verification error
-      if (resendData.message?.includes("verify a domain")) {
-        console.error("DOMAIN VERIFICATION REQUIRED: Please verify your domain at resend.com/domains");
-        throw new Error("Domain verification required. Please verify your domain at resend.com/domains and update the MAIL_FROM environment variable.");
-      }
+      console.error("Candidate email:", candidateEmail);
+      console.error("From email:", mailFrom);
       
       throw new Error(resendData.message || `Failed to send email: ${resendResponse.status}`);
     }
 
-    console.log("Selection email sent successfully to:", candidateEmail, "Response:", resendData);
+    console.log("✅ Selection email sent successfully to:", candidateEmail, "Response:", resendData);
 
     return new Response(JSON.stringify(resendData), {
       status: 200,

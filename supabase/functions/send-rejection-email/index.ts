@@ -31,11 +31,14 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending rejection email to:", candidateEmail);
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const mailFrom = "SynchroHR <synchro-hr@synchrohr.com>";
+    const mailFrom = "SynchroHR <onboarding@resend.dev>";
     
     if (!resendApiKey) {
+      console.error("RESEND_API_KEY not configured");
       throw new Error("RESEND_API_KEY not configured");
     }
+    
+    console.log("Using Resend API with from:", mailFrom);
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -115,11 +118,14 @@ const handler = async (req: Request): Promise<Response> => {
     const resendData = await resendResponse.json();
 
     if (!resendResponse.ok) {
-      console.error("Resend API error:", resendData);
-      throw new Error(resendData.message || "Failed to send email");
+      console.error("Resend API error response:", resendData);
+      console.error("Resend API status:", resendResponse.status);
+      console.error("Candidate email:", candidateEmail);
+      console.error("From email:", mailFrom);
+      throw new Error(resendData.message || `Failed to send email: ${resendResponse.status}`);
     }
 
-    console.log("Rejection email sent successfully:", resendData);
+    console.log("✅ Rejection email sent successfully to:", candidateEmail, "Response:", resendData);
 
     return new Response(JSON.stringify(resendData), {
       status: 200,

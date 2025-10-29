@@ -112,11 +112,14 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const mailFrom = Deno.env.get("MAIL_FROM") || "SynchroHR Recruitment <onboarding@resend.dev>";
+    const mailFrom = "SynchroHR <onboarding@resend.dev>";
     
     if (!resendApiKey) {
+      console.error("RESEND_API_KEY not configured");
       throw new Error("RESEND_API_KEY not configured");
     }
+    
+    console.log("Using Resend API with from:", mailFrom);
 
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",

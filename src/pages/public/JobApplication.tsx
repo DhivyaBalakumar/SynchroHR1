@@ -152,6 +152,7 @@ const JobApplication = () => {
       // Trigger ATS screening immediately
       console.log('Triggering ATS screening for:', formData.email);
       const isDemoEmail = formData.email === 'eng22ct0004@dsu.edu.in';
+      console.log('Is demo exception email?', isDemoEmail);
       
       try {
         const screeningResult = await supabase.functions.invoke('ai-resume-screening', {
@@ -162,14 +163,18 @@ const JobApplication = () => {
           }
         });
 
-        console.log('ATS screening completed:', screeningResult);
+        console.log('ATS screening result:', screeningResult);
+        
+        if (screeningResult.error) {
+          console.error('ATS screening error:', screeningResult.error);
+          throw screeningResult.error;
+        }
         
         if (screeningResult.data?.success) {
           const finalStatus = screeningResult.data.status;
-          console.log(`Candidate ${finalStatus}. Sending appropriate email...`);
-          
-          // Emails are sent automatically by the screening function
-          // Just update the UI based on result
+          console.log(`✅ Candidate ${finalStatus}. Email should be sent automatically by the screening function.`);
+        } else {
+          console.error('Screening completed but no success flag:', screeningResult.data);
         }
       } catch (screeningError) {
         console.error('Error in ATS screening:', screeningError);
