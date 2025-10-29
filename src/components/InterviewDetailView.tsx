@@ -22,6 +22,122 @@ interface InterviewDetailViewProps {
 }
 
 export const InterviewDetailView = ({ interview, onClose, onUpdate }: InterviewDetailViewProps) => {
+  // Demo multimodal analysis data
+  const demoMultimodalAnalysis = {
+    audio: {
+      audio_sentiment: {
+        overall: "positive",
+        score: 0.72,
+        confidence: 87,
+        details: {
+          positive_indicators: [
+            "Clear and articulate responses throughout the interview",
+            "Confident tone when discussing technical achievements",
+            "Enthusiastic when describing problem-solving experiences",
+            "Professional and composed communication style"
+          ],
+          negative_indicators: [
+            "Slight hesitation when discussing unfamiliar technologies",
+            "Minor decrease in pace during complex technical explanations"
+          ]
+        }
+      },
+      audio_emotions: {
+        dominant_emotion: "Confidence",
+        detected: [
+          {
+            emotion: "Confidence",
+            timestamp: "00:00-02:30",
+            intensity: 85,
+            indicators: ["steady voice tone", "clear articulation", "minimal pauses"]
+          },
+          {
+            emotion: "Enthusiasm",
+            timestamp: "02:30-05:00",
+            intensity: 78,
+            indicators: ["increased speaking pace", "energetic tone", "animated descriptions"]
+          },
+          {
+            emotion: "Joy",
+            timestamp: "03:40-04:25",
+            intensity: 72,
+            indicators: ["warm tone", "positive language", "engaging storytelling"]
+          },
+          {
+            emotion: "Nervousness",
+            timestamp: "04:25-04:50",
+            intensity: 25,
+            indicators: ["brief pause", "slower pace"]
+          }
+        ],
+        emotional_trajectory: "Started with strong confidence, maintained high enthusiasm throughout, showed excellent emotional regulation with minimal nervousness. Demonstrated authentic passion for technology and professional growth."
+      },
+      speech_patterns: {
+        estimated_pace: 145,
+        clarity_score: 92,
+        confidence_level: 88,
+        filler_words: "Minimal (3-4)"
+      }
+    },
+    video: {
+      video_sentiment: {
+        overall: "positive",
+        score: 0.78,
+        confidence: 91,
+        details: {
+          positive_visual_cues: [
+            "Maintained excellent eye contact throughout the interview",
+            "Open and welcoming body language",
+            "Genuine smiles during positive discussions",
+            "Professional posture and presentation",
+            "Animated hand gestures when explaining technical concepts"
+          ],
+          negative_visual_cues: [
+            "Brief moments of looking away during complex questions",
+            "Occasional fidgeting during pauses"
+          ]
+        }
+      },
+      video_emotions: {
+        dominant_emotion: "Confidence",
+        detected: [
+          {
+            emotion: "Confidence",
+            timestamp: "00:00-02:30",
+            intensity: 88,
+            visual_indicators: ["direct eye contact", "relaxed shoulders", "open posture"]
+          },
+          {
+            emotion: "Enthusiasm",
+            timestamp: "02:30-05:00",
+            intensity: 82,
+            visual_indicators: ["animated expressions", "forward lean", "expressive gestures"]
+          },
+          {
+            emotion: "Joy",
+            timestamp: "03:40-04:25",
+            intensity: 75,
+            visual_indicators: ["genuine smile", "bright eyes", "relaxed facial muscles"]
+          },
+          {
+            emotion: "Concentration",
+            timestamp: "04:25-04:50",
+            intensity: 70,
+            visual_indicators: ["focused gaze", "thoughtful expression", "minimal movement"]
+          }
+        ]
+      },
+      visual_engagement: {
+        eye_contact: 89,
+        facial_expressions: 85,
+        posture_quality: 91,
+        gesture_appropriateness: 87,
+        overall_presence: "Dhivya demonstrated exceptional visual engagement with consistent eye contact and professional body language. Her facial expressions were authentic and matched the content of her responses. Hand gestures were natural and helped emphasize key points without being distracting.",
+        professional_appearance: "Professional and well-presented throughout the interview"
+      }
+    }
+  };
+
   // Demo data for Dhivya
   const demoTranscript = [
     {
@@ -128,7 +244,7 @@ Dhivya presented herself professionally and demonstrated strong confidence throu
   const [hrNotes, setHrNotes] = useState(interview.feedback || demoHRNotes);
   const [saving, setSaving] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
-  const [multimodalAnalysis, setMultimodalAnalysis] = useState<any>(null);
+  const [multimodalAnalysis, setMultimodalAnalysis] = useState<any>(demoMultimodalAnalysis);
   const { toast } = useToast();
 
   const saveNotes = async () => {
@@ -280,35 +396,10 @@ Dhivya presented herself professionally and demonstrated strong confidence throu
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-4">
-              {!multimodalAnalysis ? (
-                <div className="bg-secondary/20 p-8 rounded-lg text-center space-y-4">
-                  <BarChart3 className="h-16 w-16 mx-auto text-muted-foreground" />
-                  <div>
-                    <h4 className="font-semibold mb-2">Generate Comprehensive Report</h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Generate detailed sentiment and emotion analysis for both video and audio components
-                    </p>
-                    <Button onClick={generateMultimodalReport} disabled={loadingReport}>
-                      {loadingReport ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        <>
-                          <BarChart3 className="h-4 w-4 mr-2" />
-                          Generate Report
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <MultimodalReportView 
-                  audioAnalysis={multimodalAnalysis.audio}
-                  videoAnalysis={multimodalAnalysis.video}
-                />
-              )}
+              <MultimodalReportView 
+                audioAnalysis={multimodalAnalysis.audio}
+                videoAnalysis={multimodalAnalysis.video}
+              />
             </TabsContent>
 
             <TabsContent value="notes" className="space-y-4">
