@@ -73,6 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
       .insert({
         resume_id: resumeId,
         candidate_name: candidateName,
+        candidate_email: candidateEmail,
         status: "scheduled",
         scheduled_for: scheduledFor.toISOString(),
         interview_link: interviewLink,
