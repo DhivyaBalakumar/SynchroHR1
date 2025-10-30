@@ -150,9 +150,11 @@ const JobApplication = () => {
       }
 
       // Trigger ATS screening immediately
-      console.log('Triggering ATS screening for:', formData.email);
+      console.log('🤖 Triggering ATS screening for:', formData.email);
+      console.log('📧 Candidate email:', formData.email);
+      console.log('🎯 Resume ID:', resumeData.id);
       const isDemoEmail = formData.email === 'eng22ct0004@dsu.edu.in';
-      console.log('Is demo exception email?', isDemoEmail);
+      console.log('⭐ Is demo exception email?', isDemoEmail);
       
       try {
         const screeningResult = await supabase.functions.invoke('ai-resume-screening', {
@@ -163,21 +165,27 @@ const JobApplication = () => {
           }
         });
 
-        console.log('ATS screening result:', screeningResult);
+        console.log('📊 ATS screening result:', screeningResult);
         
         if (screeningResult.error) {
-          console.error('ATS screening error:', screeningResult.error);
+          console.error('❌ ATS screening error:', screeningResult.error);
           throw screeningResult.error;
         }
         
         if (screeningResult.data?.success) {
           const finalStatus = screeningResult.data.status;
-          console.log(`✅ Candidate ${finalStatus}. Email should be sent automatically by the screening function.`);
+          const atsScore = screeningResult.data.analysis?.ats_score;
+          console.log(`✅ Candidate ${finalStatus} (ATS Score: ${atsScore})`);
+          console.log('📧 Email workflow:', screeningResult.data.email_sent ? 'Triggered' : 'Not triggered');
+          
+          if (isDemoEmail) {
+            console.log('⭐ Demo email - auto-selected regardless of ATS score');
+          }
         } else {
-          console.error('Screening completed but no success flag:', screeningResult.data);
+          console.error('⚠️ Screening completed but no success flag:', screeningResult.data);
         }
       } catch (screeningError) {
-        console.error('Error in ATS screening:', screeningError);
+        console.error('❌ Error in ATS screening:', screeningError);
         toast({
           title: 'Screening pending',
           description: 'Your application is being processed. You will receive an email shortly.',

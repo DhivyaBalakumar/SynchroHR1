@@ -25,7 +25,17 @@ const handler = async (req: Request): Promise<Response> => {
       companyCareersPage = "https://synchrohr.com/careers"
     }: InterviewCompletedRequest = await req.json();
 
-    console.log("Sending interview completed email to:", candidateEmail);
+    console.log("📧 Sending interview completed email to:", candidateEmail);
+
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const mailFrom = "SynchroHR <onboarding@resend.dev>";
+    
+    if (!resendApiKey) {
+      console.error("❌ RESEND_API_KEY not configured");
+      throw new Error("RESEND_API_KEY not configured");
+    }
+    
+    console.log("📤 Using Resend API with from:", mailFrom);
 
     const firstName = candidateName.split(' ')[0];
 
@@ -86,16 +96,6 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    const mailFrom = "SynchroHR <onboarding@resend.dev>";
-    
-    if (!resendApiKey) {
-      console.error("RESEND_API_KEY not configured");
-      throw new Error("RESEND_API_KEY not configured");
-    }
-    
-    console.log("Using Resend API with from:", mailFrom);
-
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -113,18 +113,21 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resendResponse.json();
 
     if (!resendResponse.ok) {
-      console.error("Resend API error:", emailResponse);
-      throw new Error(emailResponse.message || "Failed to send email");
+      console.error("❌ Resend API error response:", emailResponse);
+      console.error("📧 Status:", resendResponse.status);
+      console.error("📧 Recipient:", candidateEmail);
+      console.error("📧 From:", mailFrom);
+      throw new Error(emailResponse.message || `Failed to send email: ${resendResponse.status}`);
     }
 
-    console.log("Interview completed email sent successfully:", emailResponse);
+    console.log("✅ Interview completed email sent successfully to:", candidateEmail, "Response:", emailResponse);
 
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
-    console.error("Error in send-interview-completed function:", error);
+    console.error("❌ Error in send-interview-completed function:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },

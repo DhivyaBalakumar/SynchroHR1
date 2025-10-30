@@ -309,53 +309,56 @@ BE STRICT. We want only candidates who clearly demonstrate ALL required technica
     console.log(`Resume analysis completed: ${finalStatus} (ATS: ${atsScore})`);
 
     // Send appropriate email based on decision
+    console.log(`📧 Email workflow starting for ${resume.email} - Status: ${finalStatus}`);
+    
     if (finalStatus === 'selected') {
       console.log('✅ Candidate SELECTED - Sending selection email with interview link...');
       
-      // Schedule automated interview first to get the token
-      const interviewResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/schedule-automated-interview`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          resumeId: resume_id,
-          candidateName: resume.candidate_name,
-          candidateEmail: resume.email,
-          jobTitle: resume.job_roles?.title || resume.position_applied,
-          delayHours: 0, // Send immediately
-        }),
-      });
+      try {
+        // Schedule automated interview first to get the token
+        const interviewResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/schedule-automated-interview`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            resumeId: resume_id,
+            candidateName: resume.candidate_name,
+            candidateEmail: resume.email,
+            jobTitle: resume.job_roles?.title || resume.position_applied,
+            delayHours: 0, // Send immediately
+          }),
+        });
 
-      if (!interviewResponse.ok) {
-        const errorText = await interviewResponse.text();
-        console.error('Failed to schedule automated interview:', errorText);
-      } else {
+        if (!interviewResponse.ok) {
+          const errorText = await interviewResponse.text();
+          console.error('❌ Failed to schedule automated interview:', errorText);
+          throw new Error(`Interview scheduling failed: ${errorText}`);
+        }
+        
         const interviewData = await interviewResponse.json();
-        console.log('Automated interview scheduled:', interviewData);
+        console.log('✅ Automated interview scheduled:', interviewData);
         
         // Trigger email queue processing immediately
-        console.log('Triggering immediate email queue processing...');
-        try {
-          await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-email-queue`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          console.log('Email queue processing triggered successfully');
-        } catch (queueError) {
-          console.error('Error triggering email queue:', queueError);
+        console.log('📬 Triggering immediate email queue processing...');
+        const queueResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-email-queue`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (queueResponse.ok) {
+          console.log('✅ Email queue processing triggered successfully');
+        } else {
+          console.error('⚠️ Email queue processing failed but continuing...');
         }
+      } catch (error) {
+        console.error('❌ Error in selection workflow:', error);
+        // Continue even if there's an error - don't block the response
       }
-
-      // Mark selection email as sent
-      await supabaseClient
-        .from('resumes')
-        .update({ selection_email_sent: true })
-        .eq('id', resume_id);
 
     } else {
       console.log('❌ Candidate REJECTED - Sending rejection email...');
@@ -378,15 +381,18 @@ BE STRICT. We want only candidates who clearly demonstrate ALL required technica
 
         if (!rejectionResponse.ok) {
           const errorText = await rejectionResponse.text();
-          console.error('Failed to send rejection email:', errorText);
+          console.error('❌ Failed to send rejection email:', errorText);
+          console.error('📧 Recipient:', resume.email);
         } else {
           const rejectionData = await rejectionResponse.json();
-          console.log('✅ Rejection email sent successfully:', rejectionData);
+          console.log('✅ Rejection email sent successfully to:', resume.email, rejectionData);
         }
       } catch (emailError) {
-        console.error('Exception while sending rejection email:', emailError);
+        console.error('❌ Exception while sending rejection email:', emailError);
       }
     }
+    
+    console.log(`✅ Email workflow completed for ${resume.email}`);
 
     return new Response(
       JSON.stringify({ 

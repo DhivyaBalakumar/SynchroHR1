@@ -90,33 +90,39 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error logging audit:", auditError);
     }
 
-    // Queue completion email
-    const { error: emailQueueError } = await supabase
-      .from("email_queue")
-      .insert({
-        resume_id: resumeId,
-        email_type: "interview_completed",
-        scheduled_for: new Date().toISOString(), // Send immediately
-        status: "pending",
-        email_data: {
-          candidateName: resume.candidate_name,
-          candidateEmail: resume.email,
-          jobTitle: resume.job_roles?.title || "the position",
-        },
-      });
+    // Send interview completion email immediately
+    console.log('📧 Sending interview completion email...');
+    const completionResponse = await supabase.functions.invoke('send-interview-completed', {
+      body: {
+        candidateName: resume.candidate_name,
+        candidateEmail: resume.email,
+        jobTitle: resume.job_roles?.title || resume.position_applied || 'Position',
+      }
+    });
 
-    if (emailQueueError) {
-      console.error("Error queuing completion email:", emailQueueError);
+    if (completionResponse.error) {
+      console.error('❌ Failed to send interview completion email:', completionResponse.error);
+    } else {
+      console.log('✅ Interview completion email sent successfully');
     }
 
-    // Trigger immediate email processing for completion notification
-    try {
-      await supabase.functions.invoke("process-email-queue");
-    } catch (error) {
-      console.error("Error triggering email queue processing:", error);
+    // Send next steps email
+    console.log('📧 Sending next steps email...');
+    const nextStepsResponse = await supabase.functions.invoke('send-next-steps', {
+      body: {
+        candidateName: resume.candidate_name,
+        candidateEmail: resume.email,
+        jobTitle: resume.job_roles?.title || resume.position_applied || 'Position',
+      }
+    });
+
+    if (nextStepsResponse.error) {
+      console.error('❌ Failed to send next steps email:', nextStepsResponse.error);
+    } else {
+      console.log('✅ Next steps email sent successfully');
     }
 
-    console.log("Interview completion processing finished successfully");
+    console.log('✅ Interview completion processing finished successfully');
 
     return new Response(
       JSON.stringify({
