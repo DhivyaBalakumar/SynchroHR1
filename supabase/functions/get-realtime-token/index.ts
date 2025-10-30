@@ -20,10 +20,13 @@ serve(async (req) => {
     const { interviewContext } = await req.json();
 
     // Build system prompt for AI interviewer
-    const systemPrompt = `You are a professional AI interviewer conducting a video interview. 
+    const systemPrompt = `You are a professional AI interviewer conducting a video interview for the ${interviewContext.jobTitle} position at SynchroHR.
 
-Interview Context:
-${JSON.stringify(interviewContext, null, 2)}
+Candidate: ${interviewContext.candidateName}
+Role: ${interviewContext.jobTitle}
+
+Resume Summary:
+${JSON.stringify(interviewContext.resumeData, null, 2)}
 
 Guidelines:
 - Ask relevant questions based on the candidate's resume and the job role
@@ -42,7 +45,7 @@ Ask 5-7 questions total, covering:
 4. Cultural fit and motivation
 5. Questions they have for the company
 
-Start the interview by introducing yourself and explaining the format.`;
+IMPORTANT: Start the interview by introducing yourself and clearly stating that this is an interview for the ${interviewContext.jobTitle} position. For example: "Hello ${interviewContext.candidateName}, I'm your AI interviewer for the ${interviewContext.jobTitle} position at SynchroHR."`;
 
     // Request an ephemeral token from OpenAI
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
