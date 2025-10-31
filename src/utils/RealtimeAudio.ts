@@ -108,6 +108,15 @@ export class RealtimeChat {
 
       // Set up data channel
       this.dc = this.pc.createDataChannel('oai-events');
+      
+      this.dc.addEventListener('open', () => {
+        console.log('Data channel opened - triggering AI to start interview');
+        // Send response.create to trigger the AI to start speaking immediately
+        if (this.dc && this.dc.readyState === 'open') {
+          this.dc.send(JSON.stringify({ type: 'response.create' }));
+        }
+      });
+      
       this.dc.addEventListener('message', (e) => {
         const event = JSON.parse(e.data);
         console.log('Received event:', event);
