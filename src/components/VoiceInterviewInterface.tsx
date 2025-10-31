@@ -33,6 +33,7 @@ export const VoiceInterviewInterface = ({
     isConnected,
     isLoading,
     isListening,
+    interimTranscript,
     startConversation,
     endConversation,
   } = useBrowserSpeechInterview(interviewContext);
@@ -202,6 +203,17 @@ export const VoiceInterviewInterface = ({
                 </div>
               ))
             )}
+            
+            {/* Show interim transcript while speaking */}
+            {interimTranscript && (
+              <div className="flex justify-end">
+                <div className="max-w-[85%] rounded-lg p-3 bg-primary/50 text-primary-foreground text-right border-2 border-primary">
+                  <p className="text-xs font-medium mb-1 opacity-70">You (speaking...)</p>
+                  <p className="text-sm italic">{interimTranscript}</p>
+                </div>
+              </div>
+            )}
+            
             {isSpeaking && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
