@@ -38,6 +38,7 @@ import AIInterviewDemo from "./pages/demo/AIInterviewDemo";
 import CareerCoachPage from "./pages/career/CareerCoachPage";
 import PerformanceWallPage from "./pages/manager/PerformanceWallPage";
 import PulseSurveysPage from "./pages/manager/PulseSurveysPage";
+import DemoInterviewLink from "./pages/DemoInterviewLink";
 
 import DemoInterview from "./pages/interview/DemoInterview";
 
@@ -260,6 +261,7 @@ const App = () => (
               {/* Demo Routes - Public to showcase AI interview platform */}
               <Route path="/demo/ai-interview" element={<AIInterviewDemo />} />
               <Route path="/interview/demo" element={<DemoInterview />} />
+              <Route path="/demo/interview-link" element={<DemoInterviewLink />} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

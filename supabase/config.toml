@@ -39,6 +39,9 @@ verify_jwt = false
 [functions.schedule-automated-interview]
 verify_jwt = false
 
+[functions.create-demo-interview-link]
+verify_jwt = false
+
 [functions.seed-data]
 verify_jwt = false
 
