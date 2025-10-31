@@ -257,7 +257,7 @@ const App = () => (
 
               {/* Interview Routes - Public for candidates with token */}
               <Route path="/interview/login" element={<CandidateLogin />} />
-              <Route path="/interview/:token" element={<InterviewTokenHandler />} />
+              <Route path="/interview/token/:token" element={<InterviewTokenHandler />} />
               <Route path="/interview/portal" element={<InterviewPortal />} />
               
               {/* Demo Routes - Public to showcase AI interview platform */}
