@@ -17,7 +17,7 @@ const INTERVIEW_QUESTIONS = [
   "Thank you for your time! We'll be in touch soon."
 ];
 
-export const useBrowserSpeechInterview = (interviewContext: any) => {
+export const useBrowserSpeechInterview = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -349,7 +349,7 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
       setIsLoading(false);
       throw error;
     }
-  }, [interviewContext, isConnected, isSpeaking]);
+  }, []);
 
   // End conversation
   const endConversation = useCallback(() => {

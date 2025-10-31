@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useRealtimeInterview } from '@/hooks/useRealtimeInterview';
+import { useBrowserSpeechInterview } from '@/hooks/useBrowserSpeechInterview';
 import { Loader2, MessageSquare, Mic } from 'lucide-react';
 import aiInterviewer from '@/assets/ai-interviewer.png';
 import { useToast } from '@/hooks/use-toast';
@@ -36,7 +36,7 @@ export const VoiceInterviewInterface = ({
     interimTranscript,
     startConversation,
     endConversation,
-  } = useRealtimeInterview();
+  } = useBrowserSpeechInterview();
 
   const handleStartConversation = async () => {
     try {
