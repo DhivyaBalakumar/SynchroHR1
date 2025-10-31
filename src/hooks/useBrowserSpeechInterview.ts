@@ -28,6 +28,8 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
   const recognitionRef = useRef<any>(null);
   const questionIndexRef = useRef(0);
   const isProcessingRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const restartTimeoutRef = useRef<number | null>(null);
 
   // Get next question (rule-based, no API)
   const getNextQuestion = () => {
@@ -58,6 +60,7 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
       }
 
       setIsSpeaking(true);
+      isSpeakingRef.current = true;
       
       // Get next question
       const nextQuestion = getNextQuestion();
@@ -80,12 +83,14 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
         utterance.onend = () => {
           console.log('✅ Finished speaking');
           setIsSpeaking(false);
+          isSpeakingRef.current = false;
           resolve();
         };
         
         utterance.onerror = (e) => {
           console.error('Speech error:', e);
           setIsSpeaking(false);
+          isSpeakingRef.current = false;
           resolve();
         };
         
@@ -160,34 +165,52 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
         setIsListening(false);
         setInterimTranscript('');
         
-        // Don't auto-restart if processing or speaking
-        if (isConnected && !isProcessingRef.current && !isSpeaking) {
-          console.log('♻️ Auto-restarting...');
-          setTimeout(() => {
+        // Clear any pending restart
+        if (restartTimeoutRef.current) {
+          clearTimeout(restartTimeoutRef.current);
+        }
+        
+        // Auto-restart if not processing or speaking (use refs to avoid closure issues)
+        if (!isProcessingRef.current && !isSpeakingRef.current) {
+          console.log('♻️ Auto-restarting recognition in 500ms...');
+          restartTimeoutRef.current = window.setTimeout(() => {
             try {
               recognition.start();
+              console.log('✅ Recognition restarted');
             } catch (e) {
-              console.log('Already running');
+              console.log('Could not restart:', e);
             }
-          }, 300);
+          }, 500);
+        } else {
+          console.log('⏸️ Not restarting (processing or speaking)');
         }
       };
 
       recognition.onerror = (event: any) => {
         console.error('❌ ERROR:', event.error);
         
-        // Ignore network errors and no-speech
-        if (event.error === 'network' || event.error === 'no-speech') {
-          console.log('Ignoring error, continuing...');
+        // Ignore certain errors that are recoverable
+        if (event.error === 'network') {
+          console.log('⚠️ Network error - recognition will auto-restart');
+          // Don't prevent auto-restart
+          return;
+        }
+        
+        if (event.error === 'no-speech') {
+          console.log('⚠️ No speech detected - will retry');
+          return;
+        }
+        
+        if (event.error === 'aborted') {
+          console.log('⚠️ Recognition aborted - normal');
           return;
         }
         
         if (event.error === 'not-allowed') {
           alert('Microphone blocked!');
+          setIsListening(false);
+          setInterimTranscript('');
         }
-        
-        setIsListening(false);
-        setInterimTranscript('');
       };
 
       recognition.onresult = (event: any) => {
@@ -257,15 +280,18 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
 
       // Speak introduction
       setIsSpeaking(true);
+      isSpeakingRef.current = true;
       await new Promise<void>((resolve) => {
         const utterance = new SpeechSynthesisUtterance(firstQuestion);
         utterance.rate = 0.9;
         utterance.onend = () => {
           setIsSpeaking(false);
+          isSpeakingRef.current = false;
           resolve();
         };
         utterance.onerror = () => {
           setIsSpeaking(false);
+          isSpeakingRef.current = false;
           resolve();
         };
         window.speechSynthesis.speak(utterance);
@@ -293,6 +319,12 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
   const endConversation = useCallback(() => {
     console.log('🏁 Ending interview');
     
+    // Clear restart timeout
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+    
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -309,6 +341,7 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
     setInterimTranscript('');
     questionIndexRef.current = 0;
     isProcessingRef.current = false;
+    isSpeakingRef.current = false;
   }, []);
 
   return {
