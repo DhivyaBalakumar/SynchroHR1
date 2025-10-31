@@ -18,6 +18,7 @@ const JobApplication = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [interviewLink, setInterviewLink] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -180,6 +181,24 @@ const JobApplication = () => {
           
           if (isDemoEmail) {
             console.log('⭐ Demo email - auto-selected regardless of ATS score');
+            console.log('🎯 Generating interview link...');
+            
+            // Generate unique interview token for demo
+            const token = `demo_${crypto.randomUUID()}`;
+            const interviewUrl = `${window.location.origin}/interview/token/${token}`;
+            
+            // Store token in database
+            await supabase
+              .from('interview_tokens')
+              .insert({
+                token,
+                resume_id: resumeData.id,
+                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+                interview_completed: false,
+              });
+            
+            setInterviewLink(interviewUrl);
+            console.log('✅ Interview link generated:', interviewUrl);
           }
         } else {
           console.error('⚠️ Screening completed but no success flag:', screeningResult.data);
@@ -219,12 +238,12 @@ const JobApplication = () => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
         >
-          <Card className="p-12 text-center max-w-md">
+          <Card className="p-12 text-center max-w-2xl">
             <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Application Submitted!</h2>
             <p className="text-muted-foreground mb-6">
@@ -234,6 +253,40 @@ const JobApplication = () => {
               <br /><br />
               You'll receive the screening results and next steps within minutes!
             </p>
+
+            {interviewLink && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6 space-y-4">
+                <div className="flex items-center justify-center gap-2 text-green-700 font-bold text-lg">
+                  <CheckCircle2 className="h-6 w-6" />
+                  <span>🎉 You've been selected for an AI Interview!</span>
+                </div>
+                <p className="text-sm text-green-800 mb-4">
+                  Congratulations! Your unique interview link is ready. You can start the interview now or use the link sent to your email.
+                </p>
+                <div className="bg-white border border-green-300 rounded-lg p-4">
+                  <p className="text-xs font-semibold text-green-900 mb-2">Your Interview Link:</p>
+                  <a 
+                    href={interviewLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 text-sm break-all font-mono block mb-3"
+                  >
+                    {interviewLink}
+                  </a>
+                  <Button
+                    onClick={() => window.open(interviewLink, '_blank')}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    size="lg"
+                  >
+                    🚀 Start AI Interview Now
+                  </Button>
+                </div>
+                <p className="text-xs text-green-700">
+                  ⏰ This link is valid for 30 days. The interview will take approximately 20-30 minutes.
+                </p>
+              </div>
+            )}
+
             <Button onClick={() => navigate('/jobs')}>
               View More Jobs
             </Button>
