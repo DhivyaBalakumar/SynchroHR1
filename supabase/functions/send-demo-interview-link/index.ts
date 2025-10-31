@@ -44,7 +44,6 @@ serve(async (req) => {
           position_applied: jobTitle,
           pipeline_stage: "interview_scheduled",
           screening_status: "selected",
-          ai_screening_complete: true,
         })
         .select()
         .single();
