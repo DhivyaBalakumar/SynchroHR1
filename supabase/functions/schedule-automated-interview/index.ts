@@ -74,6 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
         resume_id: resumeId,
         candidate_name: candidateName,
         candidate_email: candidateEmail,
+        position: jobTitle,
         status: "scheduled",
         scheduled_for: scheduledFor.toISOString(),
         interview_link: interviewLink,
