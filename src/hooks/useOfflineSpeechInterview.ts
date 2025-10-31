@@ -128,9 +128,13 @@ export const useOfflineSpeechInterview = () => {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             
             try {
-              // Convert blob to array buffer
+              // Decode audio blob to Float32Array using Web Audio API
               const arrayBuffer = await audioBlob.arrayBuffer();
-              const audioData = new Uint8Array(arrayBuffer);
+              const audioContext = new AudioContext({ sampleRate: 16000 });
+              const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+              
+              // Get audio data as Float32Array (Whisper expects this format)
+              const audioData = audioBuffer.getChannelData(0);
               
               console.log('🔄 Transcribing audio...');
               const output = await transcriberRef.current(audioData);
