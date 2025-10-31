@@ -39,6 +39,7 @@ import CareerCoachPage from "./pages/career/CareerCoachPage";
 import PerformanceWallPage from "./pages/manager/PerformanceWallPage";
 import PulseSurveysPage from "./pages/manager/PulseSurveysPage";
 import DemoInterviewLink from "./pages/DemoInterviewLink";
+import TriggerDemoEmail from "./pages/TriggerDemoEmail";
 
 import DemoInterview from "./pages/interview/DemoInterview";
 
@@ -262,6 +263,7 @@ const App = () => (
               <Route path="/demo/ai-interview" element={<AIInterviewDemo />} />
               <Route path="/interview/demo" element={<DemoInterview />} />
               <Route path="/demo/interview-link" element={<DemoInterviewLink />} />
+              <Route path="/demo/send-email" element={<TriggerDemoEmail />} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
