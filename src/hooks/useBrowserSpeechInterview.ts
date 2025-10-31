@@ -150,9 +150,16 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
 
       // Create recognition
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      recognition.continuous = false; // Changed to false for better reliability
       recognition.interimResults = true;
       recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
+
+      console.log('✅ Recognition configured:', {
+        continuous: recognition.continuous,
+        interimResults: recognition.interimResults,
+        lang: recognition.lang
+      });
 
       // Event handlers
       recognition.onstart = () => {
@@ -214,27 +221,40 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
       };
 
       recognition.onresult = (event: any) => {
+        console.log('📊📊📊 ONRESULT TRIGGERED! Event:', event);
+        console.log('Results length:', event.results.length);
+        
         let interim = '';
         let final = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
+          const confidence = event.results[i][0].confidence;
+          
+          console.log(`Result ${i}:`, {
+            transcript,
+            confidence,
+            isFinal: event.results[i].isFinal
+          });
           
           if (event.results[i].isFinal) {
             final += transcript;
-            console.log('✅ FINAL:', transcript);
+            console.log('✅✅✅ FINAL RESULT:', transcript);
           } else {
             interim += transcript;
+            console.log('⏳ Interim result:', transcript);
           }
         }
 
         // Show interim
         if (interim) {
+          console.log('📝 Setting interim transcript:', interim);
           setInterimTranscript(interim);
         }
 
         // Process final
         if (final.trim()) {
+          console.log('🎯 Processing FINAL transcript:', final.trim());
           setInterimTranscript('');
           
           const userMessage = {
@@ -243,12 +263,28 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
             timestamp: new Date(),
           };
           
-          console.log('📝 User said:', final.trim());
+          console.log('💬 Adding to messages:', userMessage);
           setMessages(prev => [...prev, userMessage]);
 
           // Process response
           processUserResponse(final.trim());
         }
+      };
+
+      recognition.onspeechstart = () => {
+        console.log('🗣️🗣️🗣️ SPEECH STARTED - Audio detected!');
+      };
+
+      recognition.onsoundstart = () => {
+        console.log('🔊 Sound detected');
+      };
+
+      recognition.onaudiostart = () => {
+        console.log('🎤 Audio capture started');
+      };
+
+      recognition.onspeechend = () => {
+        console.log('🤐 Speech ended');
       };
 
       recognitionRef.current = recognition;
