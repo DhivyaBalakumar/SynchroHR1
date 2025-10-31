@@ -151,11 +151,13 @@ export const useBrowserSpeechInterview = () => {
 
       // Event handlers
       recognition.onstart = () => {
+        console.log('🎤 Recognition STARTED - Listening...');
         setIsListening(true);
-        networkErrorCountRef.current = 0; // Reset on successful start
+        networkErrorCountRef.current = 0;
       };
 
       recognition.onend = () => {
+        console.log('⏸️ Recognition ENDED');
         setIsListening(false);
         setInterimTranscript('');
         
@@ -163,36 +165,44 @@ export const useBrowserSpeechInterview = () => {
           clearTimeout(restartTimeoutRef.current);
         }
         
-        // Auto-restart with smart delay
+        // Auto-restart if we should continue
         if (shouldContinueRef.current && !isProcessingRef.current && !isSpeakingRef.current) {
-          // Longer delay if we've had network errors
-          const delay = networkErrorCountRef.current > 2 ? 2000 : 800;
+          const delay = networkErrorCountRef.current > 2 ? 2000 : 500;
+          console.log(`🔄 Will restart in ${delay}ms...`);
           
           restartTimeoutRef.current = window.setTimeout(() => {
             try {
+              console.log('🔄 Restarting recognition...');
               recognition.start();
             } catch (e) {
-              // Ignore restart errors
+              console.log('⚠️ Restart failed, will try again');
             }
           }, delay);
         }
       };
 
       recognition.onerror = (event: any) => {
-        // Silently handle network errors - Chrome's speech recognition needs internet
+        console.log('⚠️ Recognition error:', event.error);
+        
         if (event.error === 'network') {
           networkErrorCountRef.current++;
-          // Don't log or show error - just retry
+          console.log('⚠️ Network error (needs internet), will retry...');
           return;
         }
         
-        if (event.error === 'no-speech' || event.error === 'aborted') {
-          // Normal cases - continue
+        if (event.error === 'no-speech') {
+          console.log('⚠️ No speech detected, continuing...');
           networkErrorCountRef.current = 0;
           return;
         }
         
+        if (event.error === 'aborted') {
+          console.log('⚠️ Recognition aborted');
+          return;
+        }
+        
         if (event.error === 'not-allowed') {
+          console.error('❌ Microphone access denied');
           shouldContinueRef.current = false;
           setIsListening(false);
           alert('Please allow microphone access');
@@ -200,7 +210,7 @@ export const useBrowserSpeechInterview = () => {
       };
 
       recognition.onresult = (event: any) => {
-        networkErrorCountRef.current = 0; // Reset on successful recognition
+        networkErrorCountRef.current = 0;
         
         let interim = '';
         let final = '';
@@ -216,10 +226,12 @@ export const useBrowserSpeechInterview = () => {
         }
 
         if (interim) {
+          console.log('🗣️ You (interim):', interim);
           setInterimTranscript(interim);
         }
 
         if (final.trim()) {
+          console.log('✅ You (final):', final.trim());
           setInterimTranscript('');
           
           const userMessage = {
