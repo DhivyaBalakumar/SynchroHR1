@@ -42,6 +42,13 @@ export const InterviewPortal = () => {
     const storedName = sessionStorage.getItem('candidate_name');
     const storedJob = sessionStorage.getItem('job_title');
 
+    console.log('Interview Portal - Session data:', {
+      token: token ? 'present' : 'missing',
+      resumeId: storedResumeId,
+      candidateName: storedName,
+      jobTitle: storedJob
+    });
+
     if (!token || !storedResumeId) {
       toast({
         title: 'Access Denied',
@@ -53,11 +60,16 @@ export const InterviewPortal = () => {
     }
 
     setResumeId(storedResumeId);
-    setCandidateName(storedName || '');
-    setJobTitle(storedJob || '');
+    setCandidateName(storedName || 'Candidate');
+    setJobTitle(storedJob || 'Software Developer');
+    
+    console.log('Set interview context:', {
+      candidateName: storedName || 'Candidate',
+      jobTitle: storedJob || 'Software Developer'
+    });
     
     // Generate AI questions
-    generateInterviewQuestions(storedJob || '');
+    generateInterviewQuestions(storedJob || 'Software Developer');
   }, [navigate, toast]);
 
   // Cleanup streams on unmount or tab visibility change
@@ -387,8 +399,8 @@ export const InterviewPortal = () => {
 
       <VoiceInterviewInterface
         interviewContext={{
-          candidateName: candidateName,
-          jobTitle: jobTitle,
+          candidateName: candidateName || 'Candidate',
+          jobTitle: jobTitle || 'Software Developer',
           resumeData: {}
         }}
         videoStream={mediaStream}

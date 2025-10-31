@@ -18,49 +18,91 @@ serve(async (req) => {
     }
 
     const { interviewContext } = await req.json();
+    
+    console.log('Received interview context:', JSON.stringify(interviewContext, null, 2));
+    
+    // Validate interviewContext
+    if (!interviewContext) {
+      throw new Error("Interview context is required");
+    }
+    
+    const jobTitle = interviewContext.jobTitle || 'this position';
+    const candidateName = interviewContext.candidateName || 'there';
+    
+    console.log(`Creating session for ${candidateName} interviewing for ${jobTitle}`);
 
-    // Build system prompt for AI interviewer
-    const systemPrompt = `You are a professional AI interviewer conducting a video interview for the ${interviewContext.jobTitle} position at SynchroHR.
+    // Build system prompt for AI interviewer - CRITICAL: Use the actual job title
+    const systemPrompt = `You are a professional HR interviewer named Sarah conducting a real-time voice interview for the "${jobTitle}" position at SynchroHR.
 
-Candidate: ${interviewContext.candidateName}
-Role: ${interviewContext.jobTitle}
+CANDIDATE INFORMATION:
+- Name: ${candidateName}
+- Position Applied: ${jobTitle}
 
-Resume Summary:
-${JSON.stringify(interviewContext.resumeData, null, 2)}
+YOUR ROLE AS INTERVIEWER:
+1. Start IMMEDIATELY by greeting the candidate by name and clearly stating the SPECIFIC position: "Hello ${candidateName}, I'm Sarah, your interviewer for the ${jobTitle} position at SynchroHR. How are you doing today?"
 
-Guidelines:
-- Ask relevant questions based on the candidate's resume and the job role
-- Be friendly and professional
-- Give the candidate time to think and respond
-- Ask follow-up questions to dig deeper into their experience
-- Maintain a natural conversation flow
-- Keep questions concise and clear
-- Assess technical skills, communication, problem-solving, and cultural fit
-- Take notes on their responses for later analysis
+2. NEVER say "General Position" - ALWAYS use the exact job title: "${jobTitle}"
 
-Ask 5-7 questions total, covering:
-1. Background and experience
-2. Technical skills related to the role
-3. Problem-solving scenarios
-4. Cultural fit and motivation
-5. Questions they have for the company
+3. Ask relevant, specific questions about:
+   - Their background and relevant experience for ${jobTitle}
+   - Technical skills needed for ${jobTitle}
+   - Problem-solving abilities
+   - Cultural fit and motivation for applying to ${jobTitle}
+   - Their questions about the ${jobTitle} role
 
-IMPORTANT: Start the interview by introducing yourself and clearly stating that this is an interview for the ${interviewContext.jobTitle} position. For example: "Hello ${interviewContext.candidateName}, I'm your AI interviewer for the ${interviewContext.jobTitle} position at SynchroHR."`;
+4. CONVERSATION FLOW:
+   - Listen carefully to COMPLETE answers before responding
+   - Acknowledge what they said before asking next question
+   - Ask natural follow-up questions based on their responses
+   - Keep responses concise (2-3 sentences max)
+   - If they give a short answer, ask them to elaborate
+   - Move through 5-6 questions naturally
 
-    // Request an ephemeral token from OpenAI
+5. IMPORTANT RULES:
+   - DO NOT repeat the same question
+   - DO NOT ignore their responses
+   - DO build on what they say
+   - DO make it feel like a natural conversation
+   - ALWAYS refer to the position as "${jobTitle}", never as "General Position" or anything else
+
+6. Example conversation flow:
+   - Greeting with specific job title
+   - "Tell me about your background"
+   - Follow up on something specific they mentioned
+   - Ask about relevant technical skills for ${jobTitle}
+   - Behavioral question
+   - Their questions for you
+   - Thank them and close
+
+Remember: This is for the "${jobTitle}" position. Use that EXACT title every time.`;
+
+    // Request an ephemeral token from OpenAI with session configuration
+    const sessionConfig = {
+      model: "gpt-4o-realtime-preview-2024-12-17",
+      voice: "coral",
+      instructions: systemPrompt,
+      modalities: ["text", "audio"],
+      temperature: 0.8,
+      turn_detection: {
+        type: "server_vad",
+        threshold: 0.5,
+        prefix_padding_ms: 300,
+        silence_duration_ms: 1000
+      },
+      input_audio_transcription: {
+        model: "whisper-1"
+      }
+    };
+    
+    console.log('Session config:', JSON.stringify(sessionConfig, null, 2));
+    
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "gpt-4o-realtime-preview-2024-12-17",
-        voice: "coral", // Professional female voice
-        instructions: systemPrompt,
-        modalities: ["text", "audio"],
-        temperature: 0.7,
-      }),
+      body: JSON.stringify(sessionConfig),
     });
 
     if (!response.ok) {
@@ -70,7 +112,7 @@ IMPORTANT: Start the interview by introducing yourself and clearly stating that 
     }
 
     const data = await response.json();
-    console.log("Realtime session created successfully");
+    console.log("Realtime session created successfully with job title:", jobTitle);
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
