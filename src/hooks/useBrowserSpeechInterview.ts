@@ -40,15 +40,12 @@ export const useBrowserSpeechInterview = () => {
     return question;
   };
 
-  // Process user response and get next question
   const processUserResponse = async (userMessage: string) => {
     if (isProcessingRef.current) {
-      console.log('⏳ Already processing, skipping...');
       return;
     }
     
     isProcessingRef.current = true;
-    console.log('🤖 Processing response:', userMessage);
 
     try {
       // Stop recognition while processing
@@ -57,18 +54,15 @@ export const useBrowserSpeechInterview = () => {
           recognitionRef.current.stop();
           setIsListening(false);
         } catch (e) {
-          console.log('Recognition already stopped');
+          // Ignore stop errors
         }
       }
 
       setIsSpeaking(true);
       isSpeakingRef.current = true;
       
-      // Get next question
       const nextQuestion = getNextQuestion();
-      console.log('✅ Next question:', nextQuestion);
 
-      // Add AI message
       const assistantMessage = {
         role: 'assistant' as const,
         content: nextQuestion,
@@ -83,14 +77,12 @@ export const useBrowserSpeechInterview = () => {
         utterance.pitch = 1.0;
         
         utterance.onend = () => {
-          console.log('✅ Finished speaking');
           setIsSpeaking(false);
           isSpeakingRef.current = false;
           resolve();
         };
         
-        utterance.onerror = (e) => {
-          console.error('Speech error:', e);
+        utterance.onerror = () => {
           setIsSpeaking(false);
           isSpeakingRef.current = false;
           resolve();
@@ -102,20 +94,18 @@ export const useBrowserSpeechInterview = () => {
 
       isProcessingRef.current = false;
 
-      // Restart listening after speaking
-      if (recognitionRef.current && isConnected) {
+      // Restart listening
+      if (recognitionRef.current && shouldContinueRef.current) {
         setTimeout(() => {
           try {
             recognitionRef.current.start();
-            console.log('🎤 Restarted listening after AI spoke');
           } catch (e) {
-            console.log('Could not restart:', e);
+            // Ignore restart errors
           }
         }, 500);
       }
       
     } catch (error) {
-      console.error('❌ Error processing:', error);
       setIsSpeaking(false);
       isProcessingRef.current = false;
     }
@@ -161,73 +151,56 @@ export const useBrowserSpeechInterview = () => {
 
       // Event handlers
       recognition.onstart = () => {
-        console.log('🎤 Recognition started');
         setIsListening(true);
+        networkErrorCountRef.current = 0; // Reset on successful start
       };
 
       recognition.onend = () => {
-        console.log('🛑 Recognition ended');
         setIsListening(false);
         setInterimTranscript('');
         
-        // Clear any pending restart
         if (restartTimeoutRef.current) {
           clearTimeout(restartTimeoutRef.current);
         }
         
-        // Auto-restart if we should continue and not processing or speaking
+        // Auto-restart with smart delay
         if (shouldContinueRef.current && !isProcessingRef.current && !isSpeakingRef.current) {
-          // Use exponential backoff for network errors
-          const delay = networkErrorCountRef.current > 0 
-            ? Math.min(5000, 1000 * Math.pow(2, networkErrorCountRef.current - 1))
-            : 500;
+          // Longer delay if we've had network errors
+          const delay = networkErrorCountRef.current > 2 ? 2000 : 800;
           
-          console.log(`♻️ Auto-restarting recognition in ${delay}ms...`);
           restartTimeoutRef.current = window.setTimeout(() => {
             try {
               recognition.start();
-              console.log('✅ Recognition restarted');
             } catch (e) {
-              console.log('Could not restart:', e);
+              // Ignore restart errors
             }
           }, delay);
-        } else {
-          console.log('⏸️ Not restarting');
         }
       };
 
       recognition.onerror = (event: any) => {
-        console.error('❌ ERROR:', event.error);
-        
-        // Handle network errors with backoff
+        // Silently handle network errors - Chrome's speech recognition needs internet
         if (event.error === 'network') {
           networkErrorCountRef.current++;
-          console.log(`⚠️ Network error #${networkErrorCountRef.current} - will retry with backoff`);
+          // Don't log or show error - just retry
           return;
         }
         
-        if (event.error === 'no-speech') {
-          console.log('⚠️ No speech detected - will retry');
-          networkErrorCountRef.current = 0; // Reset on no-speech
-          return;
-        }
-        
-        if (event.error === 'aborted') {
-          console.log('⚠️ Recognition aborted - normal');
+        if (event.error === 'no-speech' || event.error === 'aborted') {
+          // Normal cases - continue
+          networkErrorCountRef.current = 0;
           return;
         }
         
         if (event.error === 'not-allowed') {
-          console.log('❌ Microphone blocked!');
           shouldContinueRef.current = false;
           setIsListening(false);
-          setInterimTranscript('');
+          alert('Please allow microphone access');
         }
       };
 
       recognition.onresult = (event: any) => {
-        // Reset network error count on successful recognition
-        networkErrorCountRef.current = 0;
+        networkErrorCountRef.current = 0; // Reset on successful recognition
         
         let interim = '';
         let final = '';
@@ -259,12 +232,6 @@ export const useBrowserSpeechInterview = () => {
           processUserResponse(final.trim());
         }
       };
-
-      // Remove verbose event listeners
-      recognition.onspeechstart = null;
-      recognition.onsoundstart = null;
-      recognition.onaudiostart = null;
-      recognition.onspeechend = null;
 
       recognitionRef.current = recognition;
 
