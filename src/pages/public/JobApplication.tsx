@@ -188,7 +188,7 @@ const JobApplication = () => {
             const interviewUrl = `${window.location.origin}/interview/token/${token}`;
             
             // Store token in database
-            await supabase
+            const { error: tokenError } = await supabase
               .from('interview_tokens')
               .insert({
                 token,
@@ -197,8 +197,18 @@ const JobApplication = () => {
                 interview_completed: false,
               });
             
-            setInterviewLink(interviewUrl);
-            console.log('✅ Interview link generated:', interviewUrl);
+            if (tokenError) {
+              console.error('❌ Error inserting interview token:', tokenError);
+              toast({
+                title: 'Token generation failed',
+                description: 'Could not generate interview link. Please try again.',
+                variant: 'destructive',
+              });
+            } else {
+              setInterviewLink(interviewUrl);
+              console.log('✅ Interview link generated:', interviewUrl);
+              console.log('✅ Token stored in database:', token);
+            }
           }
         } else {
           console.error('⚠️ Screening completed but no success flag:', screeningResult.data);
