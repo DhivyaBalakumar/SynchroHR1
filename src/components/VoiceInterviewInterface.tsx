@@ -2,9 +2,10 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useSpeechInterview } from '@/hooks/useSpeechInterview';
-import { Mic, MicOff, Volume2, VolumeX, Loader2, MessageSquare } from 'lucide-react';
+import { useRealtimeInterview } from '@/hooks/useRealtimeInterview';
+import { Loader2, MessageSquare } from 'lucide-react';
 import aiInterviewer from '@/assets/ai-interviewer.png';
+import { useToast } from '@/hooks/use-toast';
 
 interface VoiceInterviewInterfaceProps {
   interviewContext: {
@@ -24,17 +25,33 @@ export const VoiceInterviewInterface = ({
   onComplete,
 }: VoiceInterviewInterfaceProps) => {
   const userVideoRef = useRef<HTMLVideoElement>(null);
+  const { toast } = useToast();
   
   const {
     messages,
-    isListening,
     isSpeaking,
     isConnected,
+    isLoading,
     startConversation,
     endConversation,
-    toggleMic,
-    toggleVolume,
-  } = useSpeechInterview(interviewContext);
+  } = useRealtimeInterview(interviewContext);
+
+  const handleStartConversation = async () => {
+    try {
+      await startConversation();
+      toast({
+        title: 'Interview Started',
+        description: 'The AI interviewer will now begin. Speak naturally and clearly.',
+      });
+    } catch (error) {
+      console.error('Failed to start:', error);
+      toast({
+        title: 'Connection Failed',
+        description: error instanceof Error ? error.message : 'Failed to start interview',
+        variant: 'destructive',
+      });
+    }
+  };
 
   useEffect(() => {
     if (videoStream && userVideoRef.current) {
@@ -96,39 +113,25 @@ export const VoiceInterviewInterface = ({
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3">
               {!isConnected ? (
                 <Button
-                  onClick={startConversation}
+                  onClick={handleStartConversation}
                   size="lg"
                   className="shadow-lg"
+                  disabled={isLoading}
                 >
-                  <Mic className="mr-2 h-5 w-5" />
-                  Start Interview
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    'Start AI Interview'
+                  )}
                 </Button>
               ) : (
                 <>
-                  <Button
-                    onClick={toggleMic}
-                    variant="secondary"
-                    size="lg"
-                    className="shadow-lg"
-                  >
-                    {isListening ? (
-                      <Mic className="h-5 w-5" />
-                    ) : (
-                      <MicOff className="h-5 w-5" />
-                    )}
-                  </Button>
-                  <Button
-                    onClick={toggleVolume}
-                    variant="secondary"
-                    size="lg"
-                    className="shadow-lg"
-                  >
-                    {isSpeaking ? (
-                      <Volume2 className="h-5 w-5" />
-                    ) : (
-                      <VolumeX className="h-5 w-5" />
-                    )}
-                  </Button>
+                  <Badge variant={isSpeaking ? 'default' : 'secondary'} className="px-4 py-2">
+                    {isSpeaking ? '🎤 AI Speaking...' : '👂 Listening...'}
+                  </Badge>
                   <Button
                     onClick={handleEndInterview}
                     variant="destructive"
@@ -196,7 +199,7 @@ export const VoiceInterviewInterface = ({
           {isConnected && (
             <div className="p-4 border-t bg-secondary/20">
               <p className="text-xs text-muted-foreground text-center">
-                💡 Speak clearly and naturally
+                💡 The AI will wait for you to finish speaking before responding
               </p>
             </div>
           )}

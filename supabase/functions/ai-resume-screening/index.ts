@@ -46,8 +46,10 @@ serve(async (req) => {
       throw new Error('Resume not found');
     }
 
-    // Handle demo data differently - skip AI and use existing scores
-    if (resume.source === 'demo') {
+    // Handle demo data differently - BUT always process eng22ct0004@dsu.edu.in normally
+    const isTestEmail = resume.email === 'eng22ct0004@dsu.edu.in';
+    
+    if (resume.source === 'demo' && !isTestEmail) {
       console.log('Processing demo data - skipping AI analysis');
       
       // Use existing AI score from seed data or generate random one
@@ -126,6 +128,126 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
+    }
+
+    // SPECIAL HANDLING: eng22ct0004@dsu.edu.in is ALWAYS selected for demo/testing
+    if (isTestEmail) {
+      console.log('🎯 TEST EMAIL DETECTED - Auto-selecting eng22ct0004@dsu.edu.in');
+      
+      const testAnalysis = {
+        ai_score: 95,
+        recommendation: 'Highly Recommended - Test candidate',
+        skills_match: 95,
+        experience_match: 92,
+        education_match: 90,
+        ats_score: 95,
+        key_strengths: ['Test candidate for demo purposes', 'Automatically selected'],
+        areas_of_concern: [],
+        skill_gaps: [],
+        detailed_analysis: 'Test candidate - automatically selected for demonstration purposes.'
+      };
+      
+      // Update resume with selected status
+      await supabaseClient
+        .from('resumes')
+        .update({
+          ai_score: 95,
+          ai_analysis: testAnalysis,
+          screening_status: 'selected',
+          pipeline_stage: 'selected',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', resume_id);
+      
+      // Log audit trail
+      await supabaseClient
+        .from('pipeline_audit_logs')
+        .insert({
+          resume_id: resume_id,
+          action: 'ai_screening_selected',
+          details: {
+            ai_score: 95,
+            ats_score: 95,
+            recommendation: testAnalysis.recommendation,
+            auto_decision: true,
+            test_email: true
+          }
+        });
+      
+      console.log('✅ Test candidate SELECTED - Scheduling interview and sending email...');
+      
+      // Schedule automated interview and send selection email
+      try {
+        const interviewResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/schedule-automated-interview`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            resumeId: resume_id,
+            candidateName: resume.candidate_name,
+            candidateEmail: resume.email,
+            jobTitle: resume.job_roles?.title || resume.position_applied,
+            delayHours: 0, // Send immediately
+          }),
+        });
+
+        if (!interviewResponse.ok) {
+          const errorText = await interviewResponse.text();
+          console.error('❌ Failed to schedule interview:', errorText);
+          throw new Error(`Interview scheduling failed: ${errorText}`);
+        }
+        
+        const interviewData = await interviewResponse.json();
+        console.log('✅ Interview scheduled:', interviewData);
+        
+        // Trigger email queue processing immediately
+        console.log('📬 Triggering email queue processing...');
+        const queueResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-email-queue`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (queueResponse.ok) {
+          console.log('✅ Email queue processing triggered successfully');
+        } else {
+          console.error('❌ Failed to trigger email queue:', await queueResponse.text());
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            analysis: testAnalysis,
+            status: 'selected',
+            email_sent: true,
+            interview_scheduled: true,
+            test_email: true
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      } catch (emailError) {
+        console.error('❌ Error in email workflow:', emailError);
+        const errorMessage = emailError instanceof Error ? emailError.message : 'Unknown error';
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            analysis: testAnalysis,
+            status: 'selected',
+            email_sent: false,
+            email_error: errorMessage,
+            test_email: true
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
     }
 
     console.log('Processing real applicant - running AI analysis...');

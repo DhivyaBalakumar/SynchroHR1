@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+
 export class AudioRecorder {
   private stream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
@@ -64,34 +66,32 @@ export class RealtimeChat {
   private audioEl: HTMLAudioElement;
   private recorder: AudioRecorder | null = null;
 
-  constructor(private onMessage: (message: any) => void) {
+  constructor(
+    private onMessage: (message: any) => void,
+    private interviewContext: any
+  ) {
     this.audioEl = document.createElement('audio');
     this.audioEl.autoplay = true;
   }
 
-  async init(interviewContext: any) {
+  async init() {
     try {
+      console.log('Initializing Realtime Chat with context:', this.interviewContext);
+      
       // Get ephemeral token from Supabase Edge Function
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-realtime-token`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ interviewContext }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to get realtime token');
+      const { data, error } = await supabase.functions.invoke("get-realtime-token", {
+        body: { interviewContext: this.interviewContext }
+      });
+      
+      if (error) {
+        console.error('Error getting token:', error);
+        throw error;
       }
-
-      const data = await response.json();
-
-      if (!data.client_secret?.value) {
-        throw new Error('No ephemeral token received');
+      
+      console.log('Token response:', data);
+      
+      if (!data?.client_secret?.value) {
+        throw new Error("Failed to get ephemeral token");
       }
 
       const EPHEMERAL_KEY = data.client_secret.value;
