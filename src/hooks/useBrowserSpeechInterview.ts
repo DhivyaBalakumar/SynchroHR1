@@ -85,7 +85,21 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
       }
 
       utterance.onend = () => {
-        console.log('✅ Finished speaking');
+        console.log('✅ Finished speaking - now starting to listen for your response');
+        setIsSpeaking(false);
+        
+        // Start listening immediately after AI finishes
+        setTimeout(() => {
+          if (recognitionRef.current && !isProcessingRef.current) {
+            console.log('🎤 AUTO-STARTING recognition after AI speech');
+            try {
+              recognitionRef.current.start();
+            } catch (e) {
+              console.log('Could not auto-start:', e);
+            }
+          }
+        }, 500);
+        
         resolve();
       };
 
@@ -99,28 +113,49 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
     });
   };
 
-  // Start listening for speech
+  // Start listening for speech - simplified version
   const startListening = useCallback(() => {
-    if (!recognitionRef.current || isProcessingRef.current || isSpeaking) {
+    if (!recognitionRef.current) {
+      console.log('⚠️ No recognition instance');
+      return;
+    }
+    
+    if (isProcessingRef.current) {
+      console.log('⚠️ Already processing, skip starting');
+      return;
+    }
+    
+    if (isSpeaking) {
+      console.log('⚠️ AI is speaking, skip starting');
       return;
     }
 
     try {
-      console.log('🎤 Starting to listen...');
+      console.log('🎤 STARTING SPEECH RECOGNITION - YOU CAN SPEAK NOW!');
       recognitionRef.current.start();
       setIsListening(true);
-    } catch (e) {
-      console.log('⚠️ Recognition start error:', e);
+    } catch (e: any) {
+      if (e.message && e.message.includes('already started')) {
+        console.log('⚠️ Recognition already running');
+      } else {
+        console.error('❌ Failed to start recognition:', e);
+      }
     }
   }, [isSpeaking]);
 
-  // Initialize Speech Recognition
+  // Initialize and manage Speech Recognition
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      console.log('Not connected, skipping recognition setup');
+      return;
+    }
 
+    console.log('Setting up speech recognition...');
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    
     if (!SpeechRecognition) {
-      console.error('❌ Speech recognition not supported');
+      console.error('❌ Speech recognition not supported in this browser');
+      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
       return;
     }
 
@@ -128,34 +163,59 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
+
+    let restartTimeout: any = null;
 
     recognition.onstart = () => {
-      console.log('✅ Recognition STARTED - Speak now!');
+      console.log('🎤 ✅ MICROPHONE IS ACTIVE - SPEAK NOW!');
       setIsListening(true);
     };
 
+    recognition.onspeechstart = () => {
+      console.log('🗣️ Speech detected!');
+    };
+
+    recognition.onspeechend = () => {
+      console.log('🤐 Speech ended, processing...');
+    };
+
     recognition.onresult = (event: any) => {
-      const results = event.results;
-      const lastResult = results[results.length - 1];
-      const transcript = lastResult[0].transcript;
-      const isFinal = lastResult.isFinal;
+      console.log('📊 Got result event');
+      
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result[0].transcript;
+        const confidence = result[0].confidence;
+        const isFinal = result.isFinal;
 
-      console.log(`${isFinal ? '✅ FINAL' : '⏳ Interim'}: "${transcript}"`);
+        console.log(`${isFinal ? '✅ FINAL' : '⏳ Interim'}: "${transcript}" (confidence: ${confidence})`);
 
-      if (isFinal && transcript.trim().length > 0) {
-        console.log('📝 Processing final transcript:', transcript);
-        
-        // Add user message
-        const userMessage = {
-          role: 'user' as const,
-          content: transcript.trim(),
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, userMessage]);
-        conversationHistory.current.push({ role: 'user', content: transcript.trim() });
+        if (isFinal && transcript.trim().length > 0) {
+          console.log('📝 FINAL transcript received:', transcript);
+          
+          // Stop recognition
+          try {
+            recognition.stop();
+          } catch (e) {
+            console.log('Recognition already stopped');
+          }
+          
+          // Add user message
+          const userMessage = {
+            role: 'user' as const,
+            content: transcript.trim(),
+            timestamp: new Date(),
+          };
+          
+          console.log('Adding user message to transcript');
+          setMessages(prev => [...prev, userMessage]);
+          conversationHistory.current.push({ role: 'user', content: transcript.trim() });
 
-        // Get AI response
-        getAIResponse(transcript.trim());
+          // Get AI response
+          console.log('Getting AI response...');
+          getAIResponse(transcript.trim());
+        }
       }
     };
 
@@ -163,35 +223,53 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
       console.log('🛑 Recognition ended');
       setIsListening(false);
       
-      // Restart if still connected and not processing
+      // Auto-restart if still connected and not processing
       if (isConnected && !isProcessingRef.current && !isSpeaking) {
-        setTimeout(startListening, 500);
+        console.log('♻️ Will restart recognition in 1 second...');
+        restartTimeout = setTimeout(() => {
+          if (recognitionRef.current && !isProcessingRef.current && !isSpeaking) {
+            console.log('Attempting to restart recognition...');
+            try {
+              recognition.start();
+            } catch (e) {
+              console.log('Could not restart:', e);
+            }
+          }
+        }, 1000);
       }
     };
 
     recognition.onerror = (event: any) => {
-      console.error('❌ Recognition error:', event.error);
+      console.error('❌ Recognition ERROR:', event.error, event);
       setIsListening(false);
       
-      if (event.error === 'not-allowed') {
-        alert('Microphone permission denied. Please allow microphone access.');
-      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        setTimeout(startListening, 1000);
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        alert('🎤 Microphone access denied! Please allow microphone access and refresh the page.');
+      } else if (event.error === 'no-speech') {
+        console.log('No speech detected, will try again...');
+      } else if (event.error === 'audio-capture') {
+        alert('🎤 No microphone found! Please connect a microphone.');
+      } else if (event.error === 'aborted') {
+        console.log('Recognition was aborted');
+      } else {
+        console.log('Other error, will retry...');
       }
     };
 
     recognitionRef.current = recognition;
 
     return () => {
+      console.log('Cleaning up recognition...');
+      if (restartTimeout) clearTimeout(restartTimeout);
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
         } catch (e) {
-          console.log('Cleanup: recognition already stopped');
+          console.log('Cleanup: already stopped');
         }
       }
     };
-  }, [isConnected, isSpeaking, startListening]);
+  }, [isConnected, isSpeaking]);
 
   // Start the interview
   const startConversation = useCallback(async () => {
