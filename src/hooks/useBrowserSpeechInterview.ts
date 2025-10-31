@@ -152,20 +152,16 @@ export const useBrowserSpeechInterview = () => {
 
       // Create recognition
       const recognition = new SpeechRecognition();
-      recognition.continuous = false; // Changed to false for better reliability
+      recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
       recognition.maxAlternatives = 1;
 
-      console.log('✅ Recognition configured:', {
-        continuous: recognition.continuous,
-        interimResults: recognition.interimResults,
-        lang: recognition.lang
-      });
+      console.log('✅ Recognition configured');
 
       // Event handlers
       recognition.onstart = () => {
-        console.log('🎤 MICROPHONE ON - SPEAK NOW!');
+        console.log('🎤 Recognition started');
         setIsListening(true);
       };
 
@@ -230,8 +226,6 @@ export const useBrowserSpeechInterview = () => {
       };
 
       recognition.onresult = (event: any) => {
-        console.log('📊 ONRESULT TRIGGERED!');
-        
         // Reset network error count on successful recognition
         networkErrorCountRef.current = 0;
         
@@ -243,20 +237,16 @@ export const useBrowserSpeechInterview = () => {
           
           if (event.results[i].isFinal) {
             final += transcript;
-            console.log('✅ FINAL:', transcript);
           } else {
             interim += transcript;
           }
         }
 
-        // Show interim
         if (interim) {
           setInterimTranscript(interim);
         }
 
-        // Process final
         if (final.trim()) {
-          console.log('🎯 Processing:', final.trim());
           setInterimTranscript('');
           
           const userMessage = {
@@ -270,21 +260,11 @@ export const useBrowserSpeechInterview = () => {
         }
       };
 
-      recognition.onspeechstart = () => {
-        console.log('🗣️🗣️🗣️ SPEECH STARTED - Audio detected!');
-      };
-
-      recognition.onsoundstart = () => {
-        console.log('🔊 Sound detected');
-      };
-
-      recognition.onaudiostart = () => {
-        console.log('🎤 Audio capture started');
-      };
-
-      recognition.onspeechend = () => {
-        console.log('🤐 Speech ended');
-      };
+      // Remove verbose event listeners
+      recognition.onspeechstart = null;
+      recognition.onsoundstart = null;
+      recognition.onaudiostart = null;
+      recognition.onspeechend = null;
 
       recognitionRef.current = recognition;
 
@@ -304,7 +284,7 @@ export const useBrowserSpeechInterview = () => {
       // Reset question index
       questionIndexRef.current = 0;
 
-      console.log('✅ Setup complete - Starting interview...');
+      console.log('✅ Setup complete');
 
       // Start with first question
       const firstQuestion = getNextQuestion();
@@ -335,13 +315,11 @@ export const useBrowserSpeechInterview = () => {
       });
 
       // Start recognition after intro
-      console.log('🎤 Starting recognition...');
       setTimeout(() => {
         try {
           recognition.start();
-          console.log('✅ Recognition started!');
         } catch (e) {
-          console.error('❌ Start failed:', e);
+          console.log('Start error:', e);
         }
       }, 500);
 
