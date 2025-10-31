@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useBrowserSpeechInterview } from '@/hooks/useBrowserSpeechInterview';
+import { useOfflineSpeechInterview } from '@/hooks/useOfflineSpeechInterview';
 import { Loader2, MessageSquare, Mic } from 'lucide-react';
 import aiInterviewer from '@/assets/ai-interviewer.png';
 import { useToast } from '@/hooks/use-toast';
@@ -33,10 +33,10 @@ export const VoiceInterviewInterface = ({
     isConnected,
     isLoading,
     isListening,
-    interimTranscript,
+    loadingProgress,
     startConversation,
     endConversation,
-  } = useBrowserSpeechInterview();
+  } = useOfflineSpeechInterview();
 
   const handleStartConversation = async () => {
     try {
@@ -121,12 +121,12 @@ export const VoiceInterviewInterface = ({
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Connecting...
-                    </>
+                    <div className="flex flex-col items-center gap-1">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="text-xs">{loadingProgress || 'Loading...'}</span>
+                    </div>
                   ) : (
-                    'Start AI Interview'
+                    'Start Offline AI Interview'
                   )}
                 </Button>
               ) : (
@@ -139,11 +139,11 @@ export const VoiceInterviewInterface = ({
                     ) : isListening ? (
                       <Badge className="px-4 py-2 bg-red-500 text-white">
                         <Mic className="h-4 w-4 mr-2 animate-pulse" />
-                        🎤 LISTENING - SPEAK NOW!
+                        🎤 RECORDING (5 sec)
                       </Badge>
                     ) : (
                       <Badge variant="secondary" className="px-4 py-2">
-                        ⏸️ Paused
+                        ⏸️ Processing...
                       </Badge>
                     )}
                     <Button
@@ -204,16 +204,6 @@ export const VoiceInterviewInterface = ({
               ))
             )}
             
-            {/* Show interim transcript while speaking */}
-            {interimTranscript && (
-              <div className="flex justify-end">
-                <div className="max-w-[85%] rounded-lg p-3 bg-primary/50 text-primary-foreground text-right border-2 border-primary">
-                  <p className="text-xs font-medium mb-1 opacity-70">You (speaking...)</p>
-                  <p className="text-sm italic">{interimTranscript}</p>
-                </div>
-              </div>
-            )}
-            
             {isSpeaking && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -225,7 +215,7 @@ export const VoiceInterviewInterface = ({
           {isConnected && (
             <div className="p-4 border-t bg-secondary/20">
               <p className="text-xs text-muted-foreground text-center">
-                💡 The AI will wait for you to finish speaking before responding
+                💡 Speak for up to 5 seconds. Works 100% offline!
               </p>
             </div>
           )}
