@@ -40,6 +40,7 @@ import PerformanceWallPage from "./pages/manager/PerformanceWallPage";
 import PulseSurveysPage from "./pages/manager/PulseSurveysPage";
 import DemoInterviewLink from "./pages/DemoInterviewLink";
 import TriggerDemoEmail from "./pages/TriggerDemoEmail";
+import DirectDemoInterview from "./pages/DirectDemoInterview";
 
 import DemoInterview from "./pages/interview/DemoInterview";
 
@@ -264,6 +265,7 @@ const App = () => (
               <Route path="/interview/demo" element={<DemoInterview />} />
               <Route path="/demo/interview-link" element={<DemoInterviewLink />} />
               <Route path="/demo/send-email" element={<TriggerDemoEmail />} />
+              <Route path="/demo/start" element={<DirectDemoInterview />} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
