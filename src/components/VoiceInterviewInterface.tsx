@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useRealtimeInterview } from '@/hooks/useRealtimeInterview';
-import { Loader2, MessageSquare } from 'lucide-react';
+import { useBrowserSpeechInterview } from '@/hooks/useBrowserSpeechInterview';
+import { Loader2, MessageSquare, Mic } from 'lucide-react';
 import aiInterviewer from '@/assets/ai-interviewer.png';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,9 +32,10 @@ export const VoiceInterviewInterface = ({
     isSpeaking,
     isConnected,
     isLoading,
+    isListening,
     startConversation,
     endConversation,
-  } = useRealtimeInterview(interviewContext);
+  } = useBrowserSpeechInterview(interviewContext);
 
   const handleStartConversation = async () => {
     try {
@@ -129,8 +130,17 @@ export const VoiceInterviewInterface = ({
                 </Button>
               ) : (
                 <>
-                  <Badge variant={isSpeaking ? 'default' : 'secondary'} className="px-4 py-2">
-                    {isSpeaking ? '🎤 AI Speaking...' : '👂 Listening...'}
+                  <Badge variant={isSpeaking ? 'default' : 'secondary'} className="px-4 py-2 flex items-center gap-2">
+                    {isSpeaking ? (
+                      <>🎤 AI Speaking...</>
+                    ) : isListening ? (
+                      <>
+                        <Mic className="h-4 w-4 animate-pulse" />
+                        Listening...
+                      </>
+                    ) : (
+                      <>👂 Ready...</>
+                    )}
                   </Badge>
                   <Button
                     onClick={handleEndInterview}
