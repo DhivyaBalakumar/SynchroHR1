@@ -1,11 +1,21 @@
 import { useState, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
 }
+
+// Rule-based interview questions
+const INTERVIEW_QUESTIONS = [
+  "Hello! I'm your AI interviewer. Can you tell me about yourself?",
+  "What interests you most about this position?",
+  "Can you describe a challenging project you've worked on?",
+  "How do you handle working under pressure?",
+  "Where do you see yourself in the next few years?",
+  "Do you have any questions for me?",
+  "Thank you for your time! We'll be in touch soon."
+];
 
 export const useBrowserSpeechInterview = (interviewContext: any) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -16,69 +26,91 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
   const [interimTranscript, setInterimTranscript] = useState('');
   
   const recognitionRef = useRef<any>(null);
-  const conversationHistory = useRef<Array<{role: string, content: string}>>([]);
-  const isProcessing = useRef(false);
+  const questionIndexRef = useRef(0);
+  const isProcessingRef = useRef(false);
 
-  // Get AI response
-  const getAIResponse = async (userMessage: string) => {
-    if (isProcessing.current) return;
-    isProcessing.current = true;
+  // Get next question (rule-based, no API)
+  const getNextQuestion = () => {
+    const question = INTERVIEW_QUESTIONS[questionIndexRef.current];
+    questionIndexRef.current = Math.min(questionIndexRef.current + 1, INTERVIEW_QUESTIONS.length - 1);
+    return question;
+  };
+
+  // Process user response and get next question
+  const processUserResponse = async (userMessage: string) => {
+    if (isProcessingRef.current) {
+      console.log('⏳ Already processing, skipping...');
+      return;
+    }
+    
+    isProcessingRef.current = true;
+    console.log('🤖 Processing response:', userMessage);
 
     try {
+      // Stop recognition while processing
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+          setIsListening(false);
+        } catch (e) {
+          console.log('Recognition already stopped');
+        }
+      }
+
       setIsSpeaking(true);
-      console.log('🤖 Getting AI response for:', userMessage);
+      
+      // Get next question
+      const nextQuestion = getNextQuestion();
+      console.log('✅ Next question:', nextQuestion);
 
-      const { data, error } = await supabase.functions.invoke('interview-ai-chat', {
-        body: {
-          message: userMessage,
-          interviewContext,
-          conversationHistory: conversationHistory.current,
-        },
-      });
-
-      if (error) throw error;
-
-      const aiMessage = data.message;
-      console.log('✅ AI response:', aiMessage);
-
-      // Add to messages
+      // Add AI message
       const assistantMessage = {
         role: 'assistant' as const,
-        content: aiMessage,
+        content: nextQuestion,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
-      conversationHistory.current.push({ role: 'assistant', content: aiMessage });
 
-      // Speak it
+      // Speak the question
       await new Promise<void>((resolve) => {
-        const utterance = new SpeechSynthesisUtterance(aiMessage);
+        const utterance = new SpeechSynthesisUtterance(nextQuestion);
         utterance.rate = 0.9;
-        utterance.onend = () => resolve();
-        utterance.onerror = () => resolve();
+        utterance.pitch = 1.0;
+        
+        utterance.onend = () => {
+          console.log('✅ Finished speaking');
+          setIsSpeaking(false);
+          resolve();
+        };
+        
+        utterance.onerror = (e) => {
+          console.error('Speech error:', e);
+          setIsSpeaking(false);
+          resolve();
+        };
+        
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
       });
 
-      setIsSpeaking(false);
-      isProcessing.current = false;
+      isProcessingRef.current = false;
 
-      // Restart listening
-      if (recognitionRef.current) {
+      // Restart listening after speaking
+      if (recognitionRef.current && isConnected) {
         setTimeout(() => {
           try {
             recognitionRef.current.start();
-            console.log('🎤 Restarted listening');
+            console.log('🎤 Restarted listening after AI spoke');
           } catch (e) {
-            console.log('Already listening');
+            console.log('Could not restart:', e);
           }
         }, 500);
       }
       
     } catch (error) {
-      console.error('❌ Error:', error);
+      console.error('❌ Error processing:', error);
       setIsSpeaking(false);
-      isProcessing.current = false;
+      isProcessingRef.current = false;
     }
   };
 
@@ -87,42 +119,39 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
     try {
       setIsLoading(true);
       console.log('============================================');
-      console.log('🚀 STARTING INTERVIEW');
+      console.log('🚀 STARTING LOCAL INTERVIEW (NO APIs)');
       console.log('============================================');
 
       // Check browser support
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       if (!SpeechRecognition) {
-        alert('❌ Speech recognition not supported in this browser. Please use Chrome or Edge.');
+        alert('❌ Speech recognition not supported. Please use Chrome or Edge.');
         throw new Error('Speech recognition not supported');
       }
 
       console.log('✅ Speech recognition supported');
 
       // Request microphone permission
-      console.log('🎤 Requesting microphone permission...');
+      console.log('🎤 Requesting microphone...');
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('✅ Microphone permission GRANTED');
+        console.log('✅ Microphone GRANTED');
         stream.getTracks().forEach(track => track.stop());
       } catch (err) {
-        console.error('❌ Microphone permission DENIED:', err);
-        alert('🎤 Microphone access denied! Please allow microphone access in your browser settings and refresh the page.');
+        console.error('❌ Microphone DENIED:', err);
+        alert('Please allow microphone access!');
         throw err;
       }
 
-      // Create recognition instance
+      // Create recognition
       const recognition = new SpeechRecognition();
-      recognition.continuous = true; // Keep listening
-      recognition.interimResults = true; // Show interim results
+      recognition.continuous = true;
+      recognition.interimResults = true;
       recognition.lang = 'en-US';
-      recognition.maxAlternatives = 1;
-
-      console.log('✅ Recognition instance created');
 
       // Event handlers
       recognition.onstart = () => {
-        console.log('🎤🎤🎤 MICROPHONE ACTIVE - YOU CAN SPEAK NOW! 🎤🎤🎤');
+        console.log('🎤 MICROPHONE ON - SPEAK NOW!');
         setIsListening(true);
       };
 
@@ -131,33 +160,34 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
         setIsListening(false);
         setInterimTranscript('');
         
-        // Auto-restart if still connected and not processing
-        if (isConnected && !isProcessing.current) {
-          console.log('♻️ Auto-restarting recognition...');
+        // Don't auto-restart if processing or speaking
+        if (isConnected && !isProcessingRef.current && !isSpeaking) {
+          console.log('♻️ Auto-restarting...');
           setTimeout(() => {
             try {
               recognition.start();
             } catch (e) {
-              console.log('Recognition already running');
+              console.log('Already running');
             }
-          }, 100);
+          }, 300);
         }
       };
 
       recognition.onerror = (event: any) => {
-        console.error('❌ Recognition ERROR:', event.error);
-        setIsListening(false);
-        setInterimTranscript('');
+        console.error('❌ ERROR:', event.error);
+        
+        // Ignore network errors and no-speech
+        if (event.error === 'network' || event.error === 'no-speech') {
+          console.log('Ignoring error, continuing...');
+          return;
+        }
         
         if (event.error === 'not-allowed') {
-          alert('🎤 Microphone access blocked! Please allow microphone access.');
-        } else if (event.error === 'no-speech') {
-          console.log('No speech detected, continuing...');
-        } else if (event.error === 'aborted') {
-          console.log('Recognition aborted');
-        } else {
-          console.log('Will attempt to restart...');
+          alert('Microphone blocked!');
         }
+        
+        setIsListening(false);
+        setInterimTranscript('');
       };
 
       recognition.onresult = (event: any) => {
@@ -169,19 +199,18 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
           
           if (event.results[i].isFinal) {
             final += transcript;
-            console.log('✅✅✅ FINAL TRANSCRIPT:', transcript);
+            console.log('✅ FINAL:', transcript);
           } else {
             interim += transcript;
-            console.log('⏳ Interim:', transcript);
           }
         }
 
-        // Show interim transcript
+        // Show interim
         if (interim) {
           setInterimTranscript(interim);
         }
 
-        // Process final transcript
+        // Process final
         if (final.trim()) {
           setInterimTranscript('');
           
@@ -191,28 +220,12 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
             timestamp: new Date(),
           };
           
-          console.log('📝 Adding user message:', final.trim());
+          console.log('📝 User said:', final.trim());
           setMessages(prev => [...prev, userMessage]);
-          conversationHistory.current.push({ role: 'user', content: final.trim() });
 
-          // Stop recognition before processing
-          try {
-            recognition.stop();
-          } catch (e) {
-            console.log('Recognition already stopped');
-          }
-
-          // Get AI response
-          getAIResponse(final.trim());
+          // Process response
+          processUserResponse(final.trim());
         }
-      };
-
-      recognition.onspeechstart = () => {
-        console.log('🗣️ SPEECH DETECTED!');
-      };
-
-      recognition.onspeechend = () => {
-        console.log('🤐 Speech ended');
       };
 
       recognitionRef.current = recognition;
@@ -227,29 +240,54 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
 
       setIsConnected(true);
       setIsLoading(false);
-      console.log('✅ Setup complete');
+      
+      // Reset question index
+      questionIndexRef.current = 0;
 
-      // Get initial AI greeting
-      console.log('🤖 Getting initial AI greeting...');
-      await getAIResponse('');
+      console.log('✅ Setup complete - Starting interview...');
 
-      // Start recognition after greeting
-      console.log('🎤 Starting speech recognition...');
+      // Start with first question
+      const firstQuestion = getNextQuestion();
+      const introMessage = {
+        role: 'assistant' as const,
+        content: firstQuestion,
+        timestamp: new Date(),
+      };
+      setMessages([introMessage]);
+
+      // Speak introduction
+      setIsSpeaking(true);
+      await new Promise<void>((resolve) => {
+        const utterance = new SpeechSynthesisUtterance(firstQuestion);
+        utterance.rate = 0.9;
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          resolve();
+        };
+        utterance.onerror = () => {
+          setIsSpeaking(false);
+          resolve();
+        };
+        window.speechSynthesis.speak(utterance);
+      });
+
+      // Start recognition after intro
+      console.log('🎤 Starting recognition...');
       setTimeout(() => {
         try {
           recognition.start();
-          console.log('✅ Recognition started successfully!');
+          console.log('✅ Recognition started!');
         } catch (e) {
-          console.error('❌ Failed to start recognition:', e);
+          console.error('❌ Start failed:', e);
         }
-      }, 2000);
+      }, 500);
 
     } catch (error) {
-      console.error('❌ Fatal error during startup:', error);
+      console.error('❌ Fatal error:', error);
       setIsLoading(false);
       throw error;
     }
-  }, [interviewContext, isConnected]);
+  }, [interviewContext, isConnected, isSpeaking]);
 
   // End conversation
   const endConversation = useCallback(() => {
@@ -259,7 +297,7 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
       try {
         recognitionRef.current.stop();
       } catch (e) {
-        console.log('Recognition already stopped');
+        console.log('Already stopped');
       }
       recognitionRef.current = null;
     }
@@ -269,8 +307,8 @@ export const useBrowserSpeechInterview = (interviewContext: any) => {
     setIsSpeaking(false);
     setIsListening(false);
     setInterimTranscript('');
-    conversationHistory.current = [];
-    isProcessing.current = false;
+    questionIndexRef.current = 0;
+    isProcessingRef.current = false;
   }, []);
 
   return {
