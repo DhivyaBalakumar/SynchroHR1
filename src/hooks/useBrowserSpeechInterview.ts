@@ -30,6 +30,8 @@ export const useBrowserSpeechInterview = () => {
   const isProcessingRef = useRef(false);
   const isSpeakingRef = useRef(false);
   const restartTimeoutRef = useRef<number | null>(null);
+  const networkErrorCountRef = useRef(0);
+  const shouldContinueRef = useRef(false);
 
   // Get next question (rule-based, no API)
   const getNextQuestion = () => {
@@ -177,9 +179,14 @@ export const useBrowserSpeechInterview = () => {
           clearTimeout(restartTimeoutRef.current);
         }
         
-        // Auto-restart if not processing or speaking (use refs to avoid closure issues)
-        if (!isProcessingRef.current && !isSpeakingRef.current) {
-          console.log('♻️ Auto-restarting recognition in 500ms...');
+        // Auto-restart if we should continue and not processing or speaking
+        if (shouldContinueRef.current && !isProcessingRef.current && !isSpeakingRef.current) {
+          // Use exponential backoff for network errors
+          const delay = networkErrorCountRef.current > 0 
+            ? Math.min(5000, 1000 * Math.pow(2, networkErrorCountRef.current - 1))
+            : 500;
+          
+          console.log(`♻️ Auto-restarting recognition in ${delay}ms...`);
           restartTimeoutRef.current = window.setTimeout(() => {
             try {
               recognition.start();
@@ -187,24 +194,25 @@ export const useBrowserSpeechInterview = () => {
             } catch (e) {
               console.log('Could not restart:', e);
             }
-          }, 500);
+          }, delay);
         } else {
-          console.log('⏸️ Not restarting (processing or speaking)');
+          console.log('⏸️ Not restarting');
         }
       };
 
       recognition.onerror = (event: any) => {
         console.error('❌ ERROR:', event.error);
         
-        // Ignore certain errors that are recoverable
+        // Handle network errors with backoff
         if (event.error === 'network') {
-          console.log('⚠️ Network error - recognition will auto-restart');
-          // Don't prevent auto-restart
+          networkErrorCountRef.current++;
+          console.log(`⚠️ Network error #${networkErrorCountRef.current} - will retry with backoff`);
           return;
         }
         
         if (event.error === 'no-speech') {
           console.log('⚠️ No speech detected - will retry');
+          networkErrorCountRef.current = 0; // Reset on no-speech
           return;
         }
         
@@ -214,47 +222,41 @@ export const useBrowserSpeechInterview = () => {
         }
         
         if (event.error === 'not-allowed') {
-          alert('Microphone blocked!');
+          console.log('❌ Microphone blocked!');
+          shouldContinueRef.current = false;
           setIsListening(false);
           setInterimTranscript('');
         }
       };
 
       recognition.onresult = (event: any) => {
-        console.log('📊📊📊 ONRESULT TRIGGERED! Event:', event);
-        console.log('Results length:', event.results.length);
+        console.log('📊 ONRESULT TRIGGERED!');
+        
+        // Reset network error count on successful recognition
+        networkErrorCountRef.current = 0;
         
         let interim = '';
         let final = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
-          const confidence = event.results[i][0].confidence;
-          
-          console.log(`Result ${i}:`, {
-            transcript,
-            confidence,
-            isFinal: event.results[i].isFinal
-          });
           
           if (event.results[i].isFinal) {
             final += transcript;
-            console.log('✅✅✅ FINAL RESULT:', transcript);
+            console.log('✅ FINAL:', transcript);
           } else {
             interim += transcript;
-            console.log('⏳ Interim result:', transcript);
           }
         }
 
         // Show interim
         if (interim) {
-          console.log('📝 Setting interim transcript:', interim);
           setInterimTranscript(interim);
         }
 
         // Process final
         if (final.trim()) {
-          console.log('🎯 Processing FINAL transcript:', final.trim());
+          console.log('🎯 Processing:', final.trim());
           setInterimTranscript('');
           
           const userMessage = {
@@ -263,10 +265,7 @@ export const useBrowserSpeechInterview = () => {
             timestamp: new Date(),
           };
           
-          console.log('💬 Adding to messages:', userMessage);
           setMessages(prev => [...prev, userMessage]);
-
-          // Process response
           processUserResponse(final.trim());
         }
       };
@@ -299,6 +298,8 @@ export const useBrowserSpeechInterview = () => {
 
       setIsConnected(true);
       setIsLoading(false);
+      shouldContinueRef.current = true;
+      networkErrorCountRef.current = 0;
       
       // Reset question index
       questionIndexRef.current = 0;
@@ -355,6 +356,8 @@ export const useBrowserSpeechInterview = () => {
   const endConversation = useCallback(() => {
     console.log('🏁 Ending interview');
     
+    shouldContinueRef.current = false;
+    
     // Clear restart timeout
     if (restartTimeoutRef.current) {
       clearTimeout(restartTimeoutRef.current);
@@ -378,6 +381,7 @@ export const useBrowserSpeechInterview = () => {
     questionIndexRef.current = 0;
     isProcessingRef.current = false;
     isSpeakingRef.current = false;
+    networkErrorCountRef.current = 0;
   }, []);
 
   return {
