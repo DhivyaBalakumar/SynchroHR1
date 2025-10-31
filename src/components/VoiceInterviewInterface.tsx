@@ -130,26 +130,30 @@ export const VoiceInterviewInterface = ({
                 </Button>
               ) : (
                 <>
-                  <Badge variant={isSpeaking ? 'default' : 'secondary'} className="px-4 py-2 flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     {isSpeaking ? (
-                      <>🎤 AI Speaking...</>
+                      <Badge className="px-4 py-2 bg-green-500 text-white animate-pulse">
+                        🔊 AI Speaking...
+                      </Badge>
                     ) : isListening ? (
-                      <>
-                        <Mic className="h-4 w-4 animate-pulse" />
-                        Listening...
-                      </>
+                      <Badge className="px-4 py-2 bg-red-500 text-white">
+                        <Mic className="h-4 w-4 mr-2 animate-pulse" />
+                        🎤 LISTENING - SPEAK NOW!
+                      </Badge>
                     ) : (
-                      <>👂 Ready...</>
+                      <Badge variant="secondary" className="px-4 py-2">
+                        ⏸️ Paused
+                      </Badge>
                     )}
-                  </Badge>
-                  <Button
-                    onClick={handleEndInterview}
-                    variant="destructive"
-                    size="lg"
-                    className="shadow-lg"
-                  >
-                    End Interview
-                  </Button>
+                    <Button
+                      onClick={handleEndInterview}
+                      variant="destructive"
+                      size="lg"
+                      className="shadow-lg"
+                    >
+                      End Interview
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
